@@ -177,8 +177,8 @@ def delta_000_build(table_name, cols):
     e1 = add(mp, "TRANSFORMATION", DESCRIPTION="", NAME=E1, OBJECTVERSION="1", REUSABLE="NO", TYPE="Expression", VERSIONNUMBER="2")
     add(e1, "TRANSFORMFIELD", DATATYPE="string", DEFAULTVALUE="", DESCRIPTION="", EXPRESSION=EID,
         EXPRESSIONTYPE="GENERAL", NAME=EID, PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="50", SCALE="0")
-    add(e1, "TRANSFORMFIELD", DATATYPE="date/time", DEFAULTVALUE="ERROR(&apos;transformation error&apos;)", DESCRIPTION="",
-        EXPRESSION=f"TO_DATE(Concat( Concat(Substr({TS}_in, 1, 10), &apos; &apos;) , Substr({TS}_in, 12, 8)), &apos;YYYY-MM-DD HH24:MI:SS&apos;)",
+    add(e1, "TRANSFORMFIELD", DATATYPE="date/time", DEFAULTVALUE="ERROR('transformation error')", DESCRIPTION="",
+        EXPRESSION=f"TO_DATE(Concat( Concat(Substr({TS}_in, 1, 10), ' ' ) , Substr({TS}_in, 12, 8)), 'YYYY-MM-DD HH24:MI:SS')",
         EXPRESSIONTYPE="GENERAL", NAME=f"{TS}_out", PICTURETEXT="", PORTTYPE="OUTPUT", PRECISION="29", SCALE="9")
     add(e1, "TRANSFORMFIELD", DATATYPE="string", DEFAULTVALUE="", DESCRIPTION="", NAME=f"{TS}_in",
         PICTURETEXT="", PORTTYPE="INPUT", PRECISION="50", SCALE="0")
@@ -203,13 +203,13 @@ def delta_000_build(table_name, cols):
     ag = add(mp, "TRANSFORMATION", DESCRIPTION="", NAME=AGG, OBJECTVERSION="1", REUSABLE="NO", TYPE="Aggregator", VERSIONNUMBER="2")
     add(ag, "TRANSFORMFIELD", DATATYPE="string", DEFAULTVALUE="", DESCRIPTION="", EXPRESSION=EID,
         EXPRESSIONTYPE="GROUPBY", NAME=EID, PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="50", SCALE="0")
-    add(ag, "TRANSFORMFIELD", DATATYPE="date/time", DEFAULTVALUE="ERROR(&apos;transformation error&apos;)", DESCRIPTION="",
+    add(ag, "TRANSFORMFIELD", DATATYPE="date/time", DEFAULTVALUE="ERROR('transformation error')", DESCRIPTION="",
         EXPRESSION=f"first({TS}_in)", EXPRESSIONTYPE="GENERAL", NAME=f"{TS}_out", PICTURETEXT="", PORTTYPE="OUTPUT", PRECISION="29", SCALE="9")
     add(ag, "TRANSFORMFIELD", DATATYPE="date/time", DEFAULTVALUE="", DESCRIPTION="", NAME=f"{TS}_in",
         PICTURETEXT="", PORTTYPE="INPUT", PRECISION="29", SCALE="9")
     add(ag, "TRANSFORMFIELD", DATATYPE="decimal", DEFAULTVALUE="", DESCRIPTION="", NAME="OFFSET_IN",
         PICTURETEXT="", PORTTYPE="INPUT", PRECISION="19", SCALE="0")
-    add(ag, "TRANSFORMFIELD", DATATYPE="decimal", DEFAULTVALUE="ERROR(&apos;transformation error&apos;)", DESCRIPTION="",
+    add(ag, "TRANSFORMFIELD", DATATYPE="decimal", DEFAULTVALUE="ERROR('transformation error')", DESCRIPTION="",
         EXPRESSION="first(OFFSET_IN)", EXPRESSIONTYPE="GENERAL", NAME="OFFSET_OUT", PICTURETEXT="", PORTTYPE="OUTPUT", PRECISION="19", SCALE="0")
     for n,v in [("Cache Directory","$PMCacheDir"),("Tracing Level","Normal"),("Sorted Input","YES"),
                 ("Aggregator Data Cache Size","Auto"),("Aggregator Index Cache Size","Auto"),("Transformation Scope","All Input")]:
@@ -221,8 +221,8 @@ def delta_000_build(table_name, cols):
         EXPRESSIONTYPE="GENERAL", NAME=EID, PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="50", SCALE="0")
     add(e2, "TRANSFORMFIELD", DATATYPE="date/time", DEFAULTVALUE="", DESCRIPTION="", NAME=f"{TS}_IN",
         PICTURETEXT="", PORTTYPE="INPUT", PRECISION="29", SCALE="9")
-    add(e2, "TRANSFORMFIELD", DATATYPE="string", DEFAULTVALUE="ERROR(&apos;transformation error&apos;)", DESCRIPTION="",
-        EXPRESSION=f"Concat( Concat(Substr(TO_CHAR({TS}_IN, &apos;YYYY-MM-DD HH24:MI:SS&apos;), 1, 10), &apos;T&apos;) , Substr(TO_CHAR({TS}_IN, &apos;YYYY-MM-DD HH24:MI:SS&apos;), 12, 8))",
+    add(e2, "TRANSFORMFIELD", DATATYPE="string", DEFAULTVALUE="ERROR('transformation error')", DESCRIPTION="",
+        EXPRESSION=f"Concat( Concat(Substr(TO_CHAR({TS}_IN, 'YYYY-MM-DD HH24:MI:SS'), 1, 10), 'T') , Substr(TO_CHAR({TS}_IN, 'YYYY-MM-DD HH24:MI:SS'), 12, 8))",
         EXPRESSIONTYPE="GENERAL", NAME=f"{TS}_OUT", PICTURETEXT="", PORTTYPE="OUTPUT", PRECISION="50", SCALE="0")
     add(e2, "TRANSFORMFIELD", DATATYPE="decimal", DEFAULTVALUE="", DESCRIPTION="", EXPRESSION="OFFSET_OUT",
         EXPRESSIONTYPE="GENERAL", NAME="OFFSET_OUT", PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="19", SCALE="0")
@@ -237,7 +237,7 @@ def delta_000_build(table_name, cols):
     add(sq, "TABLEATTRIBUTE", NAME="Sql Query", VALUE="")
     add(sq, "TABLEATTRIBUTE", NAME="User Defined Join", VALUE="")
     add(sq, "TABLEATTRIBUTE", NAME="Source Filter",
-        VALUE=f"{SRC}.TRANSACTION_ID &gt; $$TRANSACTION_ID AND {SRC}.ROW_CREATE_DATE &lt; CONVERT(DATETIME, $$ROW_CREATE_DATE)")
+        VALUE=f"{SRC}.TRANSACTION_ID > $$TRANSACTION_ID AND {SRC}.ROW_CREATE_DATE < CONVERT(DATETIME, $$ROW_CREATE_DATE)")
     for n,v in [("Number Of Sorted Ports","0"),("Tracing Level","Normal"),("Select Distinct","NO"),
                 ("Is Partitionable","NO"),("Pre SQL",""),("Post SQL",""),
                 ("Output is deterministic","NO"),("Output is repeatable","Never")]:
@@ -447,7 +447,7 @@ def delta_010_build_xml(src1_name, src1_fields_raw, src2_name, src2_fields_raw, 
     lines.append(f'        </TRANSFORMATION>')
     
     lines.append(f'        <TRANSFORMATION DESCRIPTION="" NAME="RNKTRANS" OBJECTVERSION="1" REUSABLE="NO" TYPE="Rank" VERSIONNUMBER="1">')
-    lines.append('          <TRANSFORMFIELD DATATYPE="integer" DEFAULTVALUE="ERROR(&apos;transformation error&apos;)" EXPRESSION="RANKINDEX" EXPRESSIONTYPE="RANKINDEX" NAME="RANKINDEX" PORTTYPE="OUTPUT" PRECISION="10" SCALE="0"/>')
+    lines.append('          <TRANSFORMFIELD DATATYPE="integer" DEFAULTVALUE="ERROR(\'transformation error\')" EXPRESSION="RANKINDEX" EXPRESSIONTYPE="RANKINDEX" NAME="RANKINDEX" PORTTYPE="OUTPUT" PRECISION="10" SCALE="0"/>')
     lines.append('          <TRANSFORMFIELD DATATYPE="bigint" EXPRESSION="TRANSACTION_ID" EXPRESSIONTYPE="RANKPORT" NAME="TRANSACTION_ID" PORTTYPE="INPUT/OUTPUT" PRECISION="19" SCALE="0"/>')
     for name, sql_type, length, nullable, keytype, info, _ in src1_fields:
         if name == "TRANSACTION_ID":
