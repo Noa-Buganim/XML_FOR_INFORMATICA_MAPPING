@@ -537,10 +537,32 @@ def generate_delta_010(ddl_text):
 # =====================================================================
 
 def generate_delta_020(ddl_text):
-    return "<!-- DELTA 020 - TODO: Implement from PROGRAMIZ_DELTA_020_master_cln.py -->"
+    try:
+        with open('PROGRAMIZ_DELTA_020_master_cln.py', 'r', encoding='utf-8') as f:
+            content = f.read()
+            start = content.find("xml_output = '''") + len("xml_output = '''")
+            end = content.find("'''", start)
+            if start > 15 and end > start:
+                xml_str = content[start:end]
+                dm = minidom.parseString(xml_str)
+                return dm.toprettyxml(encoding="windows-1255").decode('windows-1255')
+    except Exception as e:
+        return f"<!-- DELTA 020 - ERROR: {e} -->"
+    return "<!-- DELTA 020 - ERROR -->"
 
 def generate_delta_030(ddl_text):
-    return "<!-- DELTA 030 - TODO: Implement from PROGRAMIZ_DELTA_030_DETAIL_CLN.py -->"
+    try:
+        with open('PROGRAMIZ_DELTA_030_DETAIL_CLN.py', 'r', encoding='utf-8') as f:
+            content = f.read()
+            start = content.find("xml_output = '''") + len("xml_output = '''")
+            end = content.find("'''", start)
+            if start > 15 and end > start:
+                xml_str = content[start:end]
+                dm = minidom.parseString(xml_str)
+                return dm.toprettyxml(encoding="windows-1255").decode('windows-1255')
+    except Exception as e:
+        return f"<!-- DELTA 030 - ERROR: {e} -->"
+    return "<!-- DELTA 030 - ERROR -->"
 
 
 # =====================================================================
