@@ -587,6 +587,57 @@ def _parse_ddl_for_delta(ddl):
     return table_name, cols
 
 
+def _parse_all_ddl_blocks(ddl_text):
+    block_re = re.compile(
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)\s*(?=CREATE\s+TABLE|$)',
+        re.IGNORECASE | re.DOTALL,
+    )
+    col_pattern = re.compile(
+        r'\[(\w+)\]\s+\[(\w+)\](?:\(([^)]+)\))?\s*(IDENTITY[^,]*)?(NOT\s+NULL|NULL)?',
+        re.IGNORECASE,
+    )
+
+    blocks = []
+    for m in block_re.finditer(ddl_text):
+        table_name = m.group(1)
+        body = m.group(2)
+        cols = []
+        field_no = 1
+        for line in body.splitlines():
+            line = line.strip().rstrip(',')
+            cm = col_pattern.match(line)
+            if not cm:
+                continue
+
+            col_name = cm.group(1)
+            base_type = cm.group(2).lower()
+            precision_str = cm.group(3) or ""
+            nullable = True if (cm.group(5) or "NULL").strip().upper() == "NULL" else False
+
+            if base_type in ("bigint",):
+                type_sql = "bigint"
+            elif base_type in ("int",):
+                type_sql = "int"
+            elif base_type in ("datetime",):
+                type_sql = "datetime"
+            elif base_type in ("date",):
+                type_sql = "date"
+            elif base_type in ("varchar", "nvarchar"):
+                p = precision_str.strip() if precision_str else "50"
+                type_sql = f"varchar({p})"
+            elif base_type in ("decimal", "numeric"):
+                ps = precision_str.strip() if precision_str else "18,0"
+                type_sql = f"decimal({ps})"
+            else:
+                type_sql = "varchar(50)"
+
+            cols.append({"name": col_name, "type_sql": type_sql, "field_no": field_no, "nullable": nullable})
+            field_no += 1
+
+        blocks.append((table_name, cols))
+    return blocks
+
+
 def _render_powermart_xml(root):
     body = ET.tostring(root, encoding="unicode")
     pretty = minidom.parseString(body.encode("utf-8")).toprettyxml(indent="    ", encoding="utf-8").decode("utf-8")
@@ -743,21 +794,45 @@ def generate_delta_020(ddl_text):
 
 def generate_delta_030(ddl_text):
     try:
-        table_name, cols = _parse_ddl_for_delta(ddl_text)
-        is_stg_input = table_name.lower().endswith("_stg")
-        base_name = table_name[:-4] if is_stg_input else table_name
-        src1_name = table_name if is_stg_input else f"{table_name}_stg"
-        src2_name = "member_demographic_master_cln"
-        target_name = f"{base_name}_CLN"
-        mapping_name = f"m_DELTA_030_{target_name}"
+        blocks = _parse_all_ddl_blocks(ddl_text)
+        if not blocks:
+            table_name, cols = _parse_ddl_for_delta(ddl_text)
+            blocks = [(table_name, cols)]
 
-        src2_cols = [
-            {"name": "TRANSACTION_ID", "type_sql": "bigint", "field_no": 1, "nullable": False},
-            {"name": "entity_id", "type_sql": "varchar(50)", "field_no": 2, "nullable": True},
-            {"name": "entity_type", "type_sql": "varchar(50)", "field_no": 3, "nullable": True},
-            {"name": "_data_timestamp_sequence", "type_sql": "varchar(50)", "field_no": 4, "nullable": True},
-            {"name": "offset", "type_sql": "bigint", "field_no": 5, "nullable": True},
-        ]
+        detail_block = None
+        master_block = None
+        for tname, tcols in blocks:
+            ln = tname.lower()
+            if detail_block is None and ("detail" in ln or "communication" in ln):
+                detail_block = (tname, tcols)
+            if master_block is None and "master" in ln:
+                master_block = (tname, tcols)
+
+        if detail_block is None:
+            detail_block = blocks[0]
+        if master_block is None:
+            master_block = blocks[1] if len(blocks) > 1 else ("member_demographic_master_cln", [
+                {"name": "TRANSACTION_ID", "type_sql": "bigint", "field_no": 1, "nullable": False},
+                {"name": "entity_id", "type_sql": "varchar(50)", "field_no": 2, "nullable": True},
+                {"name": "entity_type", "type_sql": "varchar(50)", "field_no": 3, "nullable": True},
+                {"name": "_data_timestamp_sequence", "type_sql": "varchar(50)", "field_no": 4, "nullable": True},
+                {"name": "offset", "type_sql": "bigint", "field_no": 5, "nullable": True},
+            ])
+
+        detail_name, cols = detail_block
+        master_name, src2_cols = master_block
+
+        src1_name = detail_name
+        if src1_name.lower().endswith("_stg"):
+            base_name = src1_name[:-4]
+        elif src1_name.lower().endswith("_cln"):
+            base_name = src1_name[:-4]
+        else:
+            base_name = src1_name
+
+        src2_name = master_name
+        target_name = f"{base_name}_CLN"
+        mapping_name = f"m_DELTA_030_{base_name}_cln"
 
         pm = ET.Element("POWERMART", CREATION_DATE=datetime.now().strftime("%m/%d/%Y %H:%M:%S"), REPOSITORY_VERSION="187.96")
         repo = add(pm, "REPOSITORY", NAME="InfoDW_QA_Rep", VERSION="187", CODEPAGE="MS1255", DATABASETYPE="Microsoft SQL Server")
