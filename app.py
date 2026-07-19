@@ -861,14 +861,13 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
 # =====================================================================
 # STREAMLIT UI
 # =====================================================================
-
 # =====================================================================
-# STREAMLIT UI - גרסה מודרנית וצבעים רגועים (Slate & Mint)
+# STREAMLIT UI - גרסה מודרנית וצבעים רגועים (נקייה משגיאות תחביר)
 # =====================================================================
 
 def main():
     # הגדרת פריסה רחבה ומודרנית
-    st.set_page_config(page_title="Informatica XML Generator", layout="wide", page_icon="⚙️")[cite: 1]
+    st.set_page_config(page_title="Informatica XML Generator", layout="wide", page_icon="⚙️")
     
     # הזרקת CSS מותאם אישית לפלטת צבעים רגועה ועיצוב מינימליסטי
     st.markdown("""
@@ -929,12 +928,12 @@ def main():
         background-color: #059669 !important;
     }
     </style>
-    """, unsafe_allow_html=True)[cite: 1]
+    """, unsafe_allow_html=True)
     
     # כותרת מודרנית ונקייה
-    st.markdown("<h1 class='main-title'>⚙️ מחולל מפות Informatica</h1>", unsafe_allow_html=True)[cite: 1]
+    st.markdown("<h1 class='main-title'>⚙️ מחולל מפות Informatica</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color: #64748B; font-size: 15px; margin-top: 0;'>המרת סקריפטי SQL ל-XML ארגוני בתהליך אוטומטי מנוהל.</p>", unsafe_allow_html=True)
-    st.divider()[cite: 1]
+    st.divider()
     
     # שימוש בלשוניות (Tabs) מעוצבות בקו נקי
     tab_labels = [
@@ -942,13 +941,13 @@ def main():
         "📊 DELTA 010 (Master STG)", 
         "🧹 DELTA 020 (Master CLN)", 
         "📋 DELTA 030 (Detail CLN)"
-    ][cite: 1]
-    selected_tab = st.tabs(tab_labels)[cite: 1]
+    ]
+    selected_tab = st.tabs(tab_labels)
     
-    delta_stage = ""[cite: 1]
+    delta_stage = ""
     
     # פריסת מסך חכמה (שני טורים עם מרווח אלגנטי)
-    col_input, col_settings = st.columns([2, 1], gap="large")[cite: 1]
+    col_input, col_settings = st.columns([2, 1], gap="large")
     
     with col_input:
         st.markdown("<h4 style='color: #475569;'>📥 קלט סקריפט SQL</h4>", unsafe_allow_html=True)
@@ -957,58 +956,58 @@ def main():
             height=320,
             placeholder="CREATE TABLE [dbo].[Table_Name] ( ... )",
             key="ddl_input"
-        )[cite: 1]
+        )
         
     with col_settings:
         st.markdown("<h4 style='color: #475569;'>⚙️ קונפיגורציה</h4>", unsafe_allow_html=True)
         
-        with st.container():[cite: 1]
+        with st.container():
             folder_name = st.text_input(
                 "תיקיית יעד (Folder):",
                 value="DW_Drugs",
                 key="folder_name_input"
-            ).strip() or "DW_Drugs"[cite: 1]
+            ).strip() or "DW_Drugs"
             st.markdown("<small style='color: #94A3B8;'>קובע את הגדרת ה-Folder בתוך ה-XML שייוצר.</small>", unsafe_allow_html=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)[cite: 1]
+        st.markdown("<br>", unsafe_allow_html=True)
         
         # כפתור הפעלה בצבע רגוע (צבע ה-Primary של המערכת יתאים לטון המעוצב)
-        generate_clicked = st.button("✨ מעבד ומייצר מפה", use_container_width=True, type="primary")[cite: 1]
+        generate_clicked = st.button("✨ מעבד ומייצר מפה", use_container_width=True, type="primary")
 
     # עדכון השלב הנבחר לפי הטאב הפעיל
-    for idx, tab in enumerate(selected_tab):[cite: 1]
-        with tab:[cite: 1]
-            delta_stage = tab_labels[idx][cite: 1]
+    for idx, tab in enumerate(selected_tab):
+        with tab:
+            delta_stage = tab_labels[idx]
 
     # הרצת הלוגיקה
-    if generate_clicked:[cite: 1]
-        if not ddl_input.strip():[cite: 1]
+    if generate_clicked:
+        if not ddl_input.strip():
             st.error("❌ אנא הדבק סקריפט SQL תחילה.")
         else:
-            with st.spinner("⏳ מנתח ומייצר את המבנה..."):[cite: 1]
+            with st.spinner("⏳ מנתח ומייצר את המבנה..."):
                 try:
-                    if "DELTA 000" in delta_stage:[cite: 1]
-                        xml_content = generate_delta_000(ddl_input, folder_name=folder_name)[cite: 1]
-                        file_suffix = "000_Master_Key_STG"[cite: 1]
-                    elif "DELTA 010" in delta_stage:[cite: 1]
-                        xml_content = generate_delta_010(ddl_input, folder_name=folder_name)[cite: 1]
-                        file_suffix = "010_Master_STG"[cite: 1]
-                    elif "DELTA 020" in delta_stage:[cite: 1]
-                        xml_content = generate_delta_020(ddl_input, folder_name=folder_name)[cite: 1]
-                        file_suffix = "020_Master_CLN"[cite: 1]
+                    if "DELTA 000" in delta_stage:
+                        xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
+                        file_suffix = "000_Master_Key_STG"
+                    elif "DELTA 010" in delta_stage:
+                        xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
+                        file_suffix = "010_Master_STG"
+                    elif "DELTA 020" in delta_stage:
+                        xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
+                        file_suffix = "020_Master_CLN"
                     else:
-                        xml_content = generate_delta_030(ddl_input, folder_name=folder_name)[cite: 1]
-                        file_suffix = "030_Detail_CLN"[cite: 1]
+                        xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
+                        file_suffix = "030_Detail_CLN"
                     
-                    st.session_state.xml_content = xml_content[cite: 1]
-                    st.session_state.file_suffix = file_suffix[cite: 1]
+                    st.session_state.xml_content = xml_content
+                    st.session_state.file_suffix = file_suffix
                     st.success("🎉 תהליך העיבוד הסתיים בהצלחה!")
                 except Exception as e:
-                    st.error(f"❌ שגיאה: {str(e)}")[cite: 1]
+                    st.error(f"❌ שגיאה: {str(e)}")
     
     # אזור הפלט והורדה
-    if "xml_content" in st.session_state and st.session_state.xml_content:[cite: 1]
-        st.divider()[cite: 1]
+    if "xml_content" in st.session_state and st.session_state.xml_content:
+        st.divider()
         
         # שימוש במבנה נקי להורדה
         st.markdown(f"<h4 style='color: #475569;'>📦 פלט מוכן להורדה עבור {st.session_state.file_suffix}</h4>", unsafe_allow_html=True)
@@ -1019,12 +1018,12 @@ def main():
             file_name=f"m_DELTA_{st.session_state.file_suffix}.xml",
             mime="application/xml",
             use_container_width=True
-        )[cite: 1]
+        )
         
         # תצוגה מקדימה נקייה
-        with st.expander("🔍 הצג תצוגה מקדימה של ה-XML שנוצר", expanded=False):[cite: 1]
-            st.code(st.session_state.xml_content, language="xml")[cite: 1]
+        with st.expander("🔍 הצג תצוגה מקדימה של ה-XML שנוצר", expanded=False):
+            st.code(st.session_state.xml_content, language="xml")
 
 
 if __name__ == "__main__":
-    main()[cite: 1]
+    main()
