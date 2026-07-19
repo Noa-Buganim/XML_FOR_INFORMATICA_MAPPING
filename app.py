@@ -862,76 +862,142 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
 # STREAMLIT UI
 # =====================================================================
 
+# =====================================================================
+# STREAMLIT UI - הגרסה המשודרגת והמעוצבת
+# =====================================================================
+
 def main():
-    st.set_page_config(page_title="Informatica XML Generator", layout="wide")
+    # הגדרת פריסה רחבה ומודרנית
+    st.set_page_config(page_title="Informatica XML Generator", layout="wide", page_icon="🔧")
     
+    # הזרקת CSS מותאם אישית ליישור RTL מלא ועיצוב כפתורים מרשים
     st.markdown("""
     <style>
-    h1, h2, h3 { text-align: right; direction: rtl; }
+    /* יישור כללי לימין ותמיכה ב-RTL */
+    .main * {
+        direction: rtl;
+        text-align: right;
+    }
+    /* תיקון ספציפי לתיבות קוד וטקסט באנגלית שחייבות להישאר LTR */
+    div[data-baseweb="textarea"] textarea, pre, code {
+        direction: ltr !important;
+        text-align: left !important;
+        font-family: 'Courier New', Courier, monospace !important;
+    }
+    /* עיצוב כותרת ראשית */
+    .main-title {
+        color: #1E3A8A;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    /* עיצוב הלשוניות (Tabs) */
+    button[data-baseweb="tab"] {
+        font-size: 16px !important;
+        font-weight: 600 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     
-    st.title("🔧 Informatica PowerCenter XML Generator")
-    st.markdown("<h2 style='text-align: right; direction: rtl;'>יוצר XML עבור 4 שלבי Delta</h2>", unsafe_allow_html=True)
-    st.markdown("---")
+    # כותרת ראשית ממותגת
+    st.markdown("<h1 class='main-title'>🔧 מחולל מפות Informatica PowerCenter</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #6B7280; font-size: 16px;'>כלי אוטומטי לצוות הפיתוח לייצור קבצי XML מתוך סקריפטי SQL CREATE TABLE.</p>", unsafe_allow_html=True)
+    st.divider()
     
-    delta_stage = st.radio(
-        "בחר את שלב ה-Delta:",
-        ["DELTA 000 - Master Key STG", "DELTA 010 - Master STG", "DELTA 020 - Master CLN", "DELTA 030 - Communication Detail CLN"],
-        index=0
-    )
+    # 1. שימוש בלשוניות (Tabs) מעוצבות עם אמוג'ים במקום כפתורי רדיו
+    tab_labels = [
+        "🔑 DELTA 000 (Master Key STG)", 
+        "📊 DELTA 010 (Master STG)", 
+        "🧹 DELTA 020 (Master CLN)", 
+        "📋 DELTA 030 (Detail CLN)"
+    ]
+    selected_tab = st.tabs(tab_labels)
     
-    st.markdown("### הזן CREATE TABLE DDL")
-    ddl_input = st.text_area(
-        "הדבק DDL:",
-        height=250,
-        placeholder="CREATE TABLE [schema].[table] (...)",
-        key="ddl_input"
-    )
+    # נמפה את הלשונית הנבחרת למשתנה קריא
+    delta_stage = ""
+    
+    # 2. חלוקת המסך לטורים (Columns) - פריסה ויזואלית חכמה
+    col_input, col_settings = st.columns([2, 1], gap="large")
+    
+    with col_input:
+        st.markdown("### 📥 קלט: סקריפט SQL DDL")
+        ddl_input = st.text_area(
+            "הדבק כאן את קוד ה-CREATE TABLE הארגוני:",
+            height=300,
+            placeholder="CREATE TABLE [dbo].[MyTable] (\n   [ENTITY_ID] [varchar](50) NOT NULL,\n   ...\n)",
+            key="ddl_input"
+        )
+        
+    with col_settings:
+        st.markdown("### ⚙️ הגדרות והרצה")
+        
+        # מיכל סגור להגדרות התיקייה
+        with st.container(border=True):
+            folder_name = st.text_input(
+                "שם ה-FOLDER באינפורמטיקה:",
+                value="DW_Drugs",
+                key="folder_name_input"
+            ).strip() or "DW_Drugs"
+            
+            st.caption("💡 ודא ששם התיקייה תואם במדויק לסביבת העבודה שלך ב-Repository.")
 
-    folder_name = st.text_input(
-        "שם FOLDER באינפורמטיקה:",
-        value="DW_Drugs",
-        key="folder_name_input"
-    ).strip() or "DW_Drugs"
-    
-    st.markdown("---")
-    
-    if st.button("✨ ייצר XML", use_container_width=True, type="primary"):
+        st.space = st.empty() # מרווח ויזואלי
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # כפתור הפעלה גדול ובולט
+        generate_clicked = st.button("✨ ייצר מפת XML עכשיו", use_container_width=True, type="primary")
+
+    # זיהוי איזה לשונית פתוחה כעת כדי להעביר לפונקציה המתאימה
+    for idx, tab in enumerate(selected_tab):
+        with tab:
+            delta_stage = tab_labels[idx]
+
+    # לוגיקת ההפעלה בעת לחיצה
+    if generate_clicked:
         if not ddl_input.strip():
-            st.error("❌ אנא הדבק DDL")
+            st.error("❌ לא נמצא קוד SQL. אנא הדבק סקריפט CREATE TABLE בתיבת הקלט.")
         else:
-            with st.spinner("⏳ מעבד..."):
+            with st.spinner("⏳ מנתח DDL ומייצר מבנה XML... אנא המתן"):
                 try:
+                    # חילוץ מזהה השלב מתוך מחרוזת הלשונית
                     if "DELTA 000" in delta_stage:
                         xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
+                        file_suffix = "000_Master_Key_STG"
                     elif "DELTA 010" in delta_stage:
                         xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
+                        file_suffix = "010_Master_STG"
                     elif "DELTA 020" in delta_stage:
                         xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
+                        file_suffix = "020_Master_CLN"
                     else:
                         xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
+                        file_suffix = "030_Detail_CLN"
                     
                     st.session_state.xml_content = xml_content
-                    st.success("✅ XML נוצר בהצלחה!")
+                    st.session_state.file_suffix = file_suffix
+                    st.success("✅ ה-XML נוצר בהצלחה ובאופן תקין!")
                 except Exception as e:
-                    st.error(f"❌ שגיאה: {str(e)}")
+                    st.error(f"❌ שגיאה בעיבוד ה-DDL: {str(e)}")
+                    st.info("💡 ודא שפורמט ה-CREATE TABLE תואם לציפיות הסקריפט (שימוש בסוגריים מרובעים כמקובל ב-SQL Server).")
     
+    # 3. תצוגת פלט מעוצבת ונגישה להורדה
     if "xml_content" in st.session_state and st.session_state.xml_content:
-        st.markdown("---")
-        st.markdown("### 📄 XML שנוצר")
+        st.divider()
         
-        with st.expander("הצג XML", expanded=False):
-            st.code(st.session_state.xml_content, language="xml")
+        st.markdown(f"### 📄 פלט מוכן: {st.session_state.file_suffix}")
         
+        # כפתור הורדה ענקי בצבע ירוק (Secondary מוצלח ב-Streamlit)
         st.download_button(
-            label="⬇️ הורד XML",
+            label="📥 לחץ כאן להורדת קובץ ה-XML המוכן לאינפורמטיקה",
             data=st.session_state.xml_content,
-            file_name=f"informatica_{delta_stage.split()[1]}.xml",
+            file_name=f"m_DELTA_{st.session_state.file_suffix}.xml",
             mime="application/xml",
-            use_container_width=True,
-            type="primary"
+            use_container_width=True
         )
+        
+        # אקורדיון סגור לצפייה בקוד במידת הצורך, שלא יתפוס נפח ויזואלי
+        with st.expander("🔍 הצג תצוגה מקדימה של קוד ה-XML", expanded=False):
+            st.code(st.session_state.xml_content, language="xml")
 
 
 if __name__ == "__main__":
