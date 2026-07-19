@@ -533,36 +533,246 @@ def generate_delta_010(ddl_text):
 
 
 # =====================================================================
-# DELTA 020 + 030 - Stubs (יש להחליף בלוגיקה של הקבצים המקוריים)
+# DELTA 020 + 030 - לוגיקה מלאה מהקבצים העובדים
 # =====================================================================
+
+def _parse_ddl_for_delta(ddl):
+    tbl_match = re.search(r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?', ddl, re.IGNORECASE)
+    if not tbl_match:
+        raise ValueError("Cannot find table name")
+    table_name = tbl_match.group(1)
+
+    body_match = re.search(r'\((.*)\)', ddl, re.DOTALL)
+    if not body_match:
+        raise ValueError("Cannot find table body")
+    body = body_match.group(1)
+
+    cols = []
+    field_no = 1
+    col_pattern = re.compile(
+        r'\[(\w+)\]\s+\[(\w+)\](?:\(([^)]+)\))?\s*(IDENTITY[^,]*)?(NOT\s+NULL|NULL)?',
+        re.IGNORECASE
+    )
+    for line in body.splitlines():
+        line = line.strip().rstrip(',')
+        m = col_pattern.match(line)
+        if not m:
+            continue
+
+        col_name = m.group(1)
+        base_type = m.group(2).lower()
+        precision_str = m.group(3) or ""
+        nullable = True if (m.group(5) or "NULL").strip().upper() == "NULL" else False
+
+        if base_type in ("bigint",):
+            type_sql = "bigint"
+        elif base_type in ("int",):
+            type_sql = "int"
+        elif base_type in ("datetime",):
+            type_sql = "datetime"
+        elif base_type in ("date",):
+            type_sql = "date"
+        elif base_type in ("varchar", "nvarchar"):
+            p = precision_str.strip() if precision_str else "50"
+            type_sql = f"varchar({p})"
+        elif base_type in ("decimal", "numeric"):
+            ps = precision_str.strip() if precision_str else "18,0"
+            type_sql = f"decimal({ps})"
+        else:
+            type_sql = "varchar(50)"
+
+        cols.append({"name": col_name, "type_sql": type_sql, "field_no": field_no, "nullable": nullable})
+        field_no += 1
+
+    return table_name, cols
+
+
+def _render_powermart_xml(root):
+    body = ET.tostring(root, encoding="unicode")
+    pretty = minidom.parseString(body.encode("utf-8")).toprettyxml(indent="    ", encoding="utf-8").decode("utf-8")
+    return '<?xml version="1.0" encoding="windows-1255"?>\n<!DOCTYPE POWERMART SYSTEM "powrmart.dtd">\n' + "\n".join(pretty.splitlines()[1:])
+
+
+def _pick_col(cols, default_name):
+    for c in cols:
+        if c["name"].lower() == default_name.lower():
+            return c["name"]
+    return default_name
+
+
+def _build_source(parent, source_name, dbdname, ownername, cols):
+    src_el = add(parent, "SOURCE", BUSINESSNAME="", DATABASETYPE="Microsoft SQL Server", DBDNAME=dbdname,
+                 DESCRIPTION="", NAME=source_name, OBJECTVERSION="1", OWNERNAME=ownername, VERSIONNUMBER="1")
+    po = 0
+    for i, c in enumerate(cols, 1):
+        m = delta_000_src_meta(c["type_sql"])
+        add(src_el, "SOURCEFIELD", BUSINESSNAME="", DATATYPE=m["DATATYPE"], DESCRIPTION="", FIELDNUMBER=str(i),
+            FIELDPROPERTY="0", FIELDTYPE="ELEMITEM", HIDDEN="NO", KEYTYPE="NOT A KEY", LENGTH=m["LENGTH"],
+            LEVEL="0", NAME=c["name"], NULLABLE="NULL" if c["nullable"] else "NOTNULL", OCCURS="0", OFFSET="0",
+            PHYSICALLENGTH=m["PHYSICALLENGTH"], PHYSICALOFFSET=str(po), PICTURETEXT="", PRECISION=m["PRECISION"],
+            SCALE=m["SCALE"], USAGE_FLAGS="")
+        po += int(m["PHYSICALLENGTH"])
+
+
+def _build_target(parent, target_name, cols):
+    tgt_el = add(parent, "TARGET", BUSINESSNAME="", CONSTRAINT="", DATABASETYPE="Microsoft SQL Server",
+                 DESCRIPTION="", NAME=target_name, OBJECTVERSION="1", TABLEOPTIONS="", VERSIONNUMBER="1")
+    for i, c in enumerate(cols, 1):
+        m = delta_000_src_meta(c["type_sql"])
+        add(tgt_el, "TARGETFIELD", BUSINESSNAME="", DATATYPE=m["DATATYPE"], DESCRIPTION="", FIELDNUMBER=str(i),
+            KEYTYPE="NOT A KEY", NAME=c["name"], NULLABLE="NULL" if c["nullable"] else "NOTNULL", PICTURETEXT="",
+            PRECISION=m["PRECISION"], SCALE=m["SCALE"])
+
+
+def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, src2_name, src2_cols, target_name):
+    sq_name = f"SQ_{src1_name}"
+    exp_name = "EXP_Transform"
+
+    s1_entity_id = _pick_col(src1_cols, "entity_id")
+    s1_ts = _pick_col(src1_cols, "_data_timestamp_sequence")
+    s1_offset = _pick_col(src1_cols, "offset")
+
+    s2_entity_id = _pick_col(src2_cols, "entity_id")
+    s2_ts = _pick_col(src2_cols, "_data_timestamp_sequence")
+    s2_offset = _pick_col(src2_cols, "offset")
+    s2_trans_id = _pick_col(src2_cols, "TRANSACTION_ID")
+    s2_entity_type = _pick_col(src2_cols, "entity_type")
+
+    mp = add(fld, "MAPPING", DESCRIPTION="", ISVALID="YES", NAME=mapping_name, OBJECTVERSION="1", VERSIONNUMBER="1")
+
+    sq = add(mp, "TRANSFORMATION", DESCRIPTION="", NAME=sq_name, OBJECTVERSION="1", REUSABLE="NO", TYPE="Source Qualifier", VERSIONNUMBER="1")
+    for c in src1_cols:
+        sm = delta_000_sq_meta(c["type_sql"])
+        add(sq, "TRANSFORMFIELD", DATATYPE=sm["DATATYPE"], DEFAULTVALUE="", DESCRIPTION="", NAME=c["name"],
+            PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION=sm["PRECISION"], SCALE=sm["SCALE"])
+    add(sq, "TRANSFORMFIELD", DATATYPE="string", DEFAULTVALUE="", DESCRIPTION="", NAME="entity_type_current",
+        PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="50", SCALE="0")
+
+    join_value = (
+        f"{src1_name}.{s1_entity_id} = {src2_name}.{s2_entity_id}&#xD;&#xA;"
+        f"and {src1_name}.{s1_ts} &lt; {src2_name}.{s2_ts}&#xD;&#xA;"
+        f"and {src1_name}.{s1_offset} &lt; {src2_name}.{s2_offset}&#xD;&#xA;"
+        f"and {src2_name}.{s2_trans_id} &lt;= $$TRANSACTION_ID"
+    )
+    add(sq, "TABLEATTRIBUTE", NAME="Sql Query", VALUE="")
+    add(sq, "TABLEATTRIBUTE", NAME="User Defined Join", VALUE=join_value)
+    add(sq, "TABLEATTRIBUTE", NAME="Source Filter", VALUE=f"{src2_name}.{s2_trans_id} is null")
+    for n, v in [("Number Of Sorted Ports", "0"), ("Tracing Level", "Normal"), ("Select Distinct", "NO"),
+                 ("Is Partitionable", "NO"), ("Pre SQL", ""), ("Post SQL", ""),
+                 ("Output is deterministic", "NO"), ("Output is repeatable", "Never")]:
+        add(sq, "TABLEATTRIBUTE", NAME=n, VALUE=v)
+
+    exp = add(mp, "TRANSFORMATION", DESCRIPTION="", NAME=exp_name, OBJECTVERSION="1", REUSABLE="NO", TYPE="Expression", VERSIONNUMBER="1")
+    for c in src1_cols:
+        sm = delta_000_sq_meta(c["type_sql"])
+        add(exp, "TRANSFORMFIELD", DATATYPE=sm["DATATYPE"], DEFAULTVALUE="", DESCRIPTION="", EXPRESSION=c["name"],
+            EXPRESSIONTYPE="GENERAL", NAME=c["name"], PICTURETEXT="", PORTTYPE="INPUT/OUTPUT",
+            PRECISION=sm["PRECISION"], SCALE=sm["SCALE"])
+
+    add(mp, "INSTANCE", DBDNAME="dwh-dev", DESCRIPTION="", NAME=src1_name, TRANSFORMATION_NAME=src1_name,
+        TRANSFORMATION_TYPE="Source Definition", TYPE="SOURCE")
+    add(mp, "INSTANCE", DBDNAME="dwh-dev", DESCRIPTION="", NAME=src2_name, TRANSFORMATION_NAME=src2_name,
+        TRANSFORMATION_TYPE="Source Definition", TYPE="SOURCE")
+    add(mp, "INSTANCE", DESCRIPTION="", NAME=target_name, TRANSFORMATION_NAME=target_name,
+        TRANSFORMATION_TYPE="Target Definition", TYPE="TARGET")
+    sq_inst = add(mp, "INSTANCE", DESCRIPTION="", NAME=sq_name, REUSABLE="NO", TRANSFORMATION_NAME=sq_name,
+                  TRANSFORMATION_TYPE="Source Qualifier", TYPE="TRANSFORMATION")
+    add(sq_inst, "ASSOCIATED_SOURCE_INSTANCE", NAME=src1_name)
+    add(sq_inst, "ASSOCIATED_SOURCE_INSTANCE", NAME=src2_name)
+    add(mp, "INSTANCE", DESCRIPTION="", NAME=exp_name, REUSABLE="NO", TRANSFORMATION_NAME=exp_name,
+        TRANSFORMATION_TYPE="Expression", TYPE="TRANSFORMATION")
+
+    for c in src1_cols:
+        conn(mp, c["name"], src1_name, "Source Definition", c["name"], sq_name, "Source Qualifier")
+    conn(mp, s2_entity_type, src2_name, "Source Definition", "entity_type_current", sq_name, "Source Qualifier")
+    for c in src1_cols:
+        conn(mp, c["name"], sq_name, "Source Qualifier", c["name"], exp_name, "Expression")
+    for c in src1_cols:
+        conn(mp, c["name"], exp_name, "Expression", c["name"], target_name, "Target Definition")
+
+    add(mp, "MAPPINGVARIABLE", DATATYPE="bigint", DEFAULTVALUE="0", DESCRIPTION="Transaction ID Parameter",
+        ISEXPRESSIONVARIABLE="NO", ISPARAM="YES", NAME="$$TRANSACTION_ID", PRECISION="19", SCALE="0", USERDEFINED="YES")
+    add(mp, "TARGETLOADORDER", ORDER="1", TARGETINSTANCE=target_name)
+    add(mp, "ERPINFO")
 
 def generate_delta_020(ddl_text):
     try:
-        with open('PROGRAMIZ_DELTA_020_master_cln.py', 'r', encoding='utf-8') as f:
-            content = f.read()
-            start = content.find("xml_output = '''") + len("xml_output = '''")
-            end = content.find("'''", start)
-            if start > 15 and end > start:
-                xml_str = content[start:end]
-                dm = minidom.parseString(xml_str)
-                return dm.toprettyxml(encoding="windows-1255").decode('windows-1255')
+        table_name, cols = _parse_ddl_for_delta(ddl_text)
+        base_name = table_name[:-4] if table_name.lower().endswith("_stg") else table_name
+        src1_name = table_name
+        src2_name = base_name
+        target_name = f"{base_name}_CLN"
+        mapping_name = f"m_DELTA_020_{base_name}_MASTER_CLN"
+
+        src2_cols = [
+            {"name": "TRANSACTION_ID", "type_sql": "bigint", "field_no": 1, "nullable": False},
+            {"name": "entity_id", "type_sql": "varchar(50)", "field_no": 2, "nullable": True},
+            {"name": "entity_type", "type_sql": "varchar(50)", "field_no": 3, "nullable": True},
+            {"name": "_data_timestamp_sequence", "type_sql": "varchar(50)", "field_no": 4, "nullable": True},
+            {"name": "offset", "type_sql": "bigint", "field_no": 5, "nullable": True},
+        ]
+
+        pm = ET.Element("POWERMART", CREATION_DATE=datetime.now().strftime("%m/%d/%Y %H:%M:%S"), REPOSITORY_VERSION="187.96")
+        repo = add(pm, "REPOSITORY", NAME="InfoDW_QA_Rep", VERSION="187", CODEPAGE="MS1255", DATABASETYPE="Microsoft SQL Server")
+        fld = add(repo, "FOLDER", NAME="DW_Drugs", GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
+                  DESCRIPTION="", PERMISSIONS="rwx------", UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8")
+
+        _build_source(fld, src1_name, "dwh-dev", "delta", cols)
+        _build_source(fld, src2_name, "dwh-dev", "KFK", src2_cols)
+        _build_target(fld, target_name, cols)
+        _build_two_source_delta_mapping(
+            fld,
+            mapping_name=mapping_name,
+            src1_name=src1_name,
+            src1_cols=cols,
+            src2_name=src2_name,
+            src2_cols=src2_cols,
+            target_name=target_name,
+        )
+
+        return _render_powermart_xml(pm)
     except Exception as e:
         return f"<!-- DELTA 020 - ERROR: {e} -->"
-    return "<!-- DELTA 020 - ERROR -->"
+    
 
 def generate_delta_030(ddl_text):
     try:
-        with open('PROGRAMIZ_DELTA_030_DETAIL_CLN.py', 'r', encoding='utf-8') as f:
-            content = f.read()
-            start = content.find("xml_output = '''") + len("xml_output = '''")
-            end = content.find("'''", start)
-            if start > 15 and end > start:
-                xml_str = content[start:end]
-                dm = minidom.parseString(xml_str)
-                return dm.toprettyxml(encoding="windows-1255").decode('windows-1255')
+        table_name, cols = _parse_ddl_for_delta(ddl_text)
+        base_name = table_name[:-4] if table_name.lower().endswith("_stg") else table_name
+        src1_name = table_name
+        src2_name = "member_demographic_master_cln"
+        target_name = f"{base_name}_CLN"
+        mapping_name = f"m_DELTA_030_{target_name}"
+
+        src2_cols = [
+            {"name": "TRANSACTION_ID", "type_sql": "bigint", "field_no": 1, "nullable": False},
+            {"name": "entity_id", "type_sql": "varchar(50)", "field_no": 2, "nullable": True},
+            {"name": "entity_type", "type_sql": "varchar(50)", "field_no": 3, "nullable": True},
+            {"name": "_data_timestamp_sequence", "type_sql": "varchar(50)", "field_no": 4, "nullable": True},
+            {"name": "offset", "type_sql": "bigint", "field_no": 5, "nullable": True},
+        ]
+
+        pm = ET.Element("POWERMART", CREATION_DATE=datetime.now().strftime("%m/%d/%Y %H:%M:%S"), REPOSITORY_VERSION="187.96")
+        repo = add(pm, "REPOSITORY", NAME="InfoDW_QA_Rep", VERSION="187", CODEPAGE="MS1255", DATABASETYPE="Microsoft SQL Server")
+        fld = add(repo, "FOLDER", NAME="DW_Drugs", GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
+                  DESCRIPTION="", PERMISSIONS="rwx------", UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8")
+
+        _build_source(fld, src1_name, "dwh-dev", "kfk", cols)
+        _build_source(fld, src2_name, "dwh-dev", "delta", src2_cols)
+        _build_target(fld, target_name, cols)
+        _build_two_source_delta_mapping(
+            fld,
+            mapping_name=mapping_name,
+            src1_name=src1_name,
+            src1_cols=cols,
+            src2_name=src2_name,
+            src2_cols=src2_cols,
+            target_name=target_name,
+        )
+
+        return _render_powermart_xml(pm)
     except Exception as e:
         return f"<!-- DELTA 030 - ERROR: {e} -->"
-    return "<!-- DELTA 030 - ERROR -->"
 
 
 # =====================================================================
