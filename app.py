@@ -690,9 +690,9 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
     for c in src1_cols:
         conn(mp, c["name"], exp_name, "Expression", c["name"], target_name, "Target Definition")
 
+    add(mp, "TARGETLOADORDER", ORDER="1", TARGETINSTANCE=target_name)
     add(mp, "MAPPINGVARIABLE", DATATYPE="bigint", DEFAULTVALUE="0", DESCRIPTION="Transaction ID Parameter",
         ISEXPRESSIONVARIABLE="NO", ISPARAM="YES", NAME="$$TRANSACTION_ID", PRECISION="19", SCALE="0", USERDEFINED="YES")
-    add(mp, "TARGETLOADORDER", ORDER="1", TARGETINSTANCE=target_name)
     add(mp, "ERPINFO")
 
 def generate_delta_020(ddl_text):
