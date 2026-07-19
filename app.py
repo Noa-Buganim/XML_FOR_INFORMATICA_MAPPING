@@ -698,8 +698,9 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
 def generate_delta_020(ddl_text):
     try:
         table_name, cols = _parse_ddl_for_delta(ddl_text)
-        base_name = table_name[:-4] if table_name.lower().endswith("_stg") else table_name
-        src1_name = table_name
+        is_stg_input = table_name.lower().endswith("_stg")
+        base_name = table_name[:-4] if is_stg_input else table_name
+        src1_name = table_name if is_stg_input else f"{table_name}_stg"
         src2_name = base_name
         target_name = f"{base_name}_CLN"
         mapping_name = f"m_DELTA_020_{base_name}_MASTER_CLN"
@@ -738,8 +739,9 @@ def generate_delta_020(ddl_text):
 def generate_delta_030(ddl_text):
     try:
         table_name, cols = _parse_ddl_for_delta(ddl_text)
-        base_name = table_name[:-4] if table_name.lower().endswith("_stg") else table_name
-        src1_name = table_name
+        is_stg_input = table_name.lower().endswith("_stg")
+        base_name = table_name[:-4] if is_stg_input else table_name
+        src1_name = table_name if is_stg_input else f"{table_name}_stg"
         src2_name = "member_demographic_master_cln"
         target_name = f"{base_name}_CLN"
         mapping_name = f"m_DELTA_030_{target_name}"
