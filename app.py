@@ -624,7 +624,7 @@ def _build_target(parent, target_name, cols):
             PRECISION=m["PRECISION"], SCALE=m["SCALE"])
 
 
-def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, src2_name, src2_cols, target_name):
+def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, src2_name, src2_cols, target_name, source_filter=None):
     sq_name = f"SQ_{src1_name}"
     exp_name = "EXP_Transform"
 
@@ -649,14 +649,15 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
         PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="50", SCALE="0")
 
     join_value = (
-        f"{src1_name}.{s1_entity_id} = {src2_name}.{s2_entity_id}&#xD;&#xA;"
-        f"and {src1_name}.{s1_ts} &lt; {src2_name}.{s2_ts}&#xD;&#xA;"
-        f"and {src1_name}.{s1_offset} &lt; {src2_name}.{s2_offset}&#xD;&#xA;"
-        f"and {src2_name}.{s2_trans_id} &lt;= $$TRANSACTION_ID"
+        f"{src1_name}.{s1_entity_id} = {src2_name}.{s2_entity_id} "
+        f"AND {src1_name}.{s1_ts} < {src2_name}.{s2_ts} "
+        f"AND {src1_name}.{s1_offset} < {src2_name}.{s2_offset} "
+        f"AND {src2_name}.{s2_trans_id} <= $$TRANSACTION_ID"
     )
     add(sq, "TABLEATTRIBUTE", NAME="Sql Query", VALUE="")
     add(sq, "TABLEATTRIBUTE", NAME="User Defined Join", VALUE=join_value)
-    add(sq, "TABLEATTRIBUTE", NAME="Source Filter", VALUE=f"{src2_name}.{s2_trans_id} is null")
+    sf = source_filter if source_filter is not None else f"{src2_name}.{s2_trans_id} is null"
+    add(sq, "TABLEATTRIBUTE", NAME="Source Filter", VALUE=sf)
     for n, v in [("Number Of Sorted Ports", "0"), ("Tracing Level", "Normal"), ("Select Distinct", "NO"),
                  ("Is Partitionable", "NO"), ("Pre SQL", ""), ("Post SQL", ""),
                  ("Output is deterministic", "NO"), ("Output is repeatable", "Never")]:
@@ -705,12 +706,15 @@ def generate_delta_020(ddl_text):
         target_name = f"{base_name}_CLN"
         mapping_name = f"m_DELTA_020_{base_name}_MASTER_CLN"
 
+        # ב-020 מקור ה-MASTER צריך להכיל את אותו סט שדות מלא של ה-DDL.
         src2_cols = [
-            {"name": "TRANSACTION_ID", "type_sql": "bigint", "field_no": 1, "nullable": False},
-            {"name": "entity_id", "type_sql": "varchar(50)", "field_no": 2, "nullable": True},
-            {"name": "entity_type", "type_sql": "varchar(50)", "field_no": 3, "nullable": True},
-            {"name": "_data_timestamp_sequence", "type_sql": "varchar(50)", "field_no": 4, "nullable": True},
-            {"name": "offset", "type_sql": "bigint", "field_no": 5, "nullable": True},
+            {
+                "name": c["name"],
+                "type_sql": c["type_sql"],
+                "field_no": i,
+                "nullable": c["nullable"],
+            }
+            for i, c in enumerate(cols, 1)
         ]
 
         pm = ET.Element("POWERMART", CREATION_DATE=datetime.now().strftime("%m/%d/%Y %H:%M:%S"), REPOSITORY_VERSION="187.96")
@@ -729,6 +733,7 @@ def generate_delta_020(ddl_text):
             src2_name=src2_name,
             src2_cols=src2_cols,
             target_name=target_name,
+            source_filter=f"{src2_name}.TRANSACTION_ID is null",
         )
 
         return _render_powermart_xml(pm)
@@ -770,6 +775,7 @@ def generate_delta_030(ddl_text):
             src2_name=src2_name,
             src2_cols=src2_cols,
             target_name=target_name,
+            source_filter=f"{src2_name}.TRANSACTION_ID is null",
         )
 
         return _render_powermart_xml(pm)
