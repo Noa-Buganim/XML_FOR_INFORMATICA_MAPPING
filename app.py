@@ -109,13 +109,13 @@ def conn(mp, ff, fi, fit, tf, ti, tit):
         FROMFIELD=ff, FROMINSTANCE=fi, FROMINSTANCETYPE=fit,
         TOFIELD=tf,   TOINSTANCE=ti,   TOINSTANCETYPE=tit)
 
-def delta_000_build(table_name, cols):
+def delta_000_build(table_name, cols, folder_name="DW_Drugs"):
     cfg = {
         "repo_name":"InfoDW_QA_Rep",
         "repo_version":"187",
         "codepage":"MS1255",
         "db_type":"Microsoft SQL Server",
-        "folder_name":"DW_Drugs",
+        "folder_name": folder_name,
         "folder_owner":"Administrator",
         "folder_uuid":"620f71cd-f2d3-4541-9b90-9c08ea2afbf8",
         "dbdname":"dwh-dev",
@@ -287,9 +287,9 @@ def delta_000_build(table_name, cols):
 
     return pm
 
-def generate_delta_000(ddl_text):
+def generate_delta_000(ddl_text, folder_name="DW_Drugs"):
     table_name, cols = delta_000_parse_ddl(ddl_text)
-    root = delta_000_build(table_name, cols)
+    root = delta_000_build(table_name, cols, folder_name=folder_name)
     body   = ET.tostring(root, encoding="unicode")
     pretty = minidom.parseString(body.encode("utf-8")).toprettyxml(indent="    ", encoding="utf-8").decode("utf-8")
     output = '<?xml version="1.0" encoding="windows-1255"?>\n<!DOCTYPE POWERMART SYSTEM "powrmart.dtd">\n' + "\n".join(pretty.splitlines()[1:])
@@ -500,12 +500,12 @@ def delta_010_build_xml(src1_name, src1_fields_raw, src2_name, src2_fields_raw, 
     
     return "\n".join(lines)
 
-def generate_delta_010(ddl_text):
+def generate_delta_010(ddl_text, folder_name="DW_Drugs"):
     cfg = {
         "repo_name": "InfoDW_QA_Rep",
         "repo_version": "187",
         "codepage": "MS1255",
-        "folder_name": "DW_Drugs",
+        "folder_name": folder_name,
         "folder_owner": "Administrator",
         "folder_uuid": "620f71cd-f2d3-4541-9b90-9c08ea2afbf8",
         "src1_dbdname": "dwh-dev",
@@ -747,7 +747,7 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
         ISEXPRESSIONVARIABLE="NO", ISPARAM="YES", NAME="$$TRANSACTION_ID", PRECISION="19", SCALE="0", USERDEFINED="YES")
     add(mp, "ERPINFO")
 
-def generate_delta_020(ddl_text):
+def generate_delta_020(ddl_text, folder_name="DW_Drugs"):
     try:
         table_name, cols = _parse_ddl_for_delta(ddl_text)
         is_stg_input = table_name.lower().endswith("_stg")
@@ -770,7 +770,7 @@ def generate_delta_020(ddl_text):
 
         pm = ET.Element("POWERMART", CREATION_DATE=datetime.now().strftime("%m/%d/%Y %H:%M:%S"), REPOSITORY_VERSION="187.96")
         repo = add(pm, "REPOSITORY", NAME="InfoDW_QA_Rep", VERSION="187", CODEPAGE="MS1255", DATABASETYPE="Microsoft SQL Server")
-        fld = add(repo, "FOLDER", NAME="DW_Drugs", GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
+        fld = add(repo, "FOLDER", NAME=folder_name, GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
                   DESCRIPTION="", PERMISSIONS="rwx------", UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8")
 
         _build_source(fld, src1_name, "dwh-dev", "delta", cols)
@@ -792,7 +792,7 @@ def generate_delta_020(ddl_text):
         return f"<!-- DELTA 020 - ERROR: {e} -->"
     
 
-def generate_delta_030(ddl_text):
+def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
     try:
         blocks = _parse_all_ddl_blocks(ddl_text)
         if not blocks:
@@ -836,11 +836,11 @@ def generate_delta_030(ddl_text):
 
         pm = ET.Element("POWERMART", CREATION_DATE=datetime.now().strftime("%m/%d/%Y %H:%M:%S"), REPOSITORY_VERSION="187.96")
         repo = add(pm, "REPOSITORY", NAME="InfoDW_QA_Rep", VERSION="187", CODEPAGE="MS1255", DATABASETYPE="Microsoft SQL Server")
-        fld = add(repo, "FOLDER", NAME="DW_Drugs", GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
+        fld = add(repo, "FOLDER", NAME=folder_name, GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
                   DESCRIPTION="", PERMISSIONS="rwx------", UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8")
 
         _build_source(fld, src1_name, "dwh-dev", "kfk", cols)
-        _build_source(fld, src2_name, "dwh-dev", "delta", src2_cols)
+        _build_source(fld, src2_name, "dwh-dev", "KFK", src2_cols)
         _build_target(fld, target_name, cols)
         _build_two_source_delta_mapping(
             fld,
@@ -888,6 +888,12 @@ def main():
         placeholder="CREATE TABLE [schema].[table] (...)",
         key="ddl_input"
     )
+
+    folder_name = st.text_input(
+        "שם FOLDER באינפורמטיקה:",
+        value="DW_Drugs",
+        key="folder_name_input"
+    ).strip() or "DW_Drugs"
     
     st.markdown("---")
     
@@ -898,13 +904,13 @@ def main():
             with st.spinner("⏳ מעבד..."):
                 try:
                     if "DELTA 000" in delta_stage:
-                        xml_content = generate_delta_000(ddl_input)
+                        xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
                     elif "DELTA 010" in delta_stage:
-                        xml_content = generate_delta_010(ddl_input)
+                        xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
                     elif "DELTA 020" in delta_stage:
-                        xml_content = generate_delta_020(ddl_input)
+                        xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
                     else:
-                        xml_content = generate_delta_030(ddl_input)
+                        xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
                     
                     st.session_state.xml_content = xml_content
                     st.success("✅ XML נוצר בהצלחה!")
