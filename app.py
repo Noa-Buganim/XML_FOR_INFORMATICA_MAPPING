@@ -862,14 +862,14 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
 # STREAMLIT UI
 # =====================================================================
 # =====================================================================
-# STREAMLIT UI - גרסה מודרנית וצבעים רגועים (נקייה משגיאות תחביר)
+# STREAMLIT UI - גרסה מודרנית, צבעים רגועים ולוגיקה מתוקנת
 # =====================================================================
 
 def main():
     # הגדרת פריסה רחבה ומודרנית
     st.set_page_config(page_title="Informatica XML Generator", layout="wide", page_icon="⚙️")
     
-    # הזרקת CSS מותאם אישית לפלטת צבעים רגועה ועיצוב מינימליסטי
+    # הזרקת CSS מותאם אישית לפלטת צבעים רגועה (Slate & Mint) ועיצוב RTL
     st.markdown("""
     <style>
     /* עיצוב ויישור כללי ל-RTL */
@@ -879,12 +879,12 @@ def main():
         font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
     
-    /* תיקון ספציפי לתיבות קוד וטקסט באנגלית שחייבות להישאר LTR וקריאות */
+    /* תיקון ספציפי לתיבות קוד וטקסט באנגלית */
     div[data-baseweb="textarea"] textarea, pre, code {
         direction: ltr !important;
         text-align: left !important;
         font-family: 'Fira Code', 'Courier New', monospace !important;
-        background-color: #F8FAFC !important; /* רקע רך לקוד */
+        background-color: #F8FAFC !important;
         color: #334155 !important;
     }
     
@@ -907,7 +907,7 @@ def main():
         border-bottom-color: #475569 !important;
     }
     
-    /* שדרוג תיבות התוכן (Containers) למראה נקי בלי גבולות גסים */
+    /* שדרוג תיבות התוכן (Containers) */
     div[data-testid="stContainer"] {
         background-color: #F8FAFC;
         border: 1px solid #E2E8F0 !important;
@@ -915,7 +915,7 @@ def main():
         padding: 20px !important;
     }
     
-    /* כפתור הורדה מותאם אישית - ירוק מרווה/מנטה מרגיע */
+    /* כפתור הורדה מותאם אישית - ירוק מנטה/מרווה */
     div.stDownloadButton > button {
         background-color: #10B981 !important;
         color: white !important;
@@ -935,81 +935,76 @@ def main():
     st.markdown("<p style='color: #64748B; font-size: 15px; margin-top: 0;'>המרת סקריפטי SQL ל-XML ארגוני בתהליך אוטומטי מנוהל.</p>", unsafe_allow_html=True)
     st.divider()
     
-    # שימוש בלשוניות (Tabs) מעוצבות בקו נקי
-    tab_labels = [
+    # הגדרת רשימת השלבים
+    tabs_list = [
         "🔑 DELTA 000 (Key STG)", 
         "📊 DELTA 010 (Master STG)", 
         "🧹 DELTA 020 (Master CLN)", 
         "📋 DELTA 030 (Detail CLN)"
     ]
-    selected_tab = st.tabs(tab_labels)
     
-    delta_stage = ""
+    # יצירת ה-Tabs
+    tabs = st.tabs(tabs_list)
     
-    # פריסת מסך חכמה (שני טורים עם מרווח אלגנטי)
-    col_input, col_settings = st.columns([2, 1], gap="large")
-    
-    with col_input:
-        st.markdown("<h4 style='color: #475569;'>📥 קלט סקריפט SQL</h4>", unsafe_allow_html=True)
-        ddl_input = st.text_area(
-            "הזן את ה-CREATE TABLE לניתוח:",
-            height=320,
-            placeholder="CREATE TABLE [dbo].[Table_Name] ( ... )",
-            key="ddl_input"
-        )
+    # עטיפת התוכן והלוגיקה בתוך כל Tab בצורה תקינה
+    for idx, tab in enumerate(tabs):
+        current_stage = tabs_list[idx]
         
-    with col_settings:
-        st.markdown("<h4 style='color: #475569;'>⚙️ קונפיגורציה</h4>", unsafe_allow_html=True)
-        
-        with st.container():
-            folder_name = st.text_input(
-                "תיקיית יעד (Folder):",
-                value="DW_Drugs",
-                key="folder_name_input"
-            ).strip() or "DW_Drugs"
-            st.markdown("<small style='color: #94A3B8;'>קובע את הגדרת ה-Folder בתוך ה-XML שייוצר.</small>", unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # כפתור הפעלה בצבע רגוע (צבע ה-Primary של המערכת יתאים לטון המעוצב)
-        generate_clicked = st.button("✨ מעבד ומייצר מפה", use_container_width=True, type="primary")
-
-    # עדכון השלב הנבחר לפי הטאב הפעיל
-    for idx, tab in enumerate(selected_tab):
         with tab:
-            delta_stage = tab_labels[idx]
+            col_input, col_settings = st.columns([2, 1], gap="large")
+            
+            with col_input:
+                st.markdown("<h4 style='color: #475569;'>📥 קלט סקריפט SQL</h4>", unsafe_allow_html=True)
+                ddl_input = st.text_area(
+                    "הזן את ה-CREATE TABLE לניתוח:",
+                    height=300,
+                    placeholder="CREATE TABLE [dbo].[Table_Name] ( ... )",
+                    key=f"ddl_input_{idx}"
+                )
+                
+            with col_settings:
+                st.markdown("<h4 style='color: #475569;'>⚙️ קונפיגורציה</h4>", unsafe_allow_html=True)
+                
+                with st.container():
+                    folder_name = st.text_input(
+                        "תיקיית יעד (Folder):",
+                        value="DW_Drugs",
+                        key=f"folder_name_{idx}"
+                    ).strip() or "DW_Drugs"
+                    st.markdown("<small style='color: #94A3B8;'>קובע את הגדרת ה-Folder בתוך ה-XML שייוצר.</small>", unsafe_allow_html=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                generate_clicked = st.button("✨ מעבד ומייצר מפה", key=f"btn_{idx}", use_container_width=True, type="primary")
 
-    # הרצת הלוגיקה
-    if generate_clicked:
-        if not ddl_input.strip():
-            st.error("❌ אנא הדבק סקריפט SQL תחילה.")
-        else:
-            with st.spinner("⏳ מנתח ומייצר את המבנה..."):
-                try:
-                    if "DELTA 000" in delta_stage:
-                        xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
-                        file_suffix = "000_Master_Key_STG"
-                    elif "DELTA 010" in delta_stage:
-                        xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
-                        file_suffix = "010_Master_STG"
-                    elif "DELTA 020" in delta_stage:
-                        xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
-                        file_suffix = "020_Master_CLN"
-                    else:
-                        xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
-                        file_suffix = "030_Detail_CLN"
-                    
-                    st.session_state.xml_content = xml_content
-                    st.session_state.file_suffix = file_suffix
-                    st.success("🎉 תהליך העיבוד הסתיים בהצלחה!")
-                except Exception as e:
-                    st.error(f"❌ שגיאה: {str(e)}")
-    
-    # אזור הפלט והורדה
+            # הרצת העיבוד בלחיצה
+            if generate_clicked:
+                if not ddl_input.strip():
+                    st.error("❌ אנא הדבק סקריפט SQL תחילה.")
+                else:
+                    with st.spinner("⏳ מנתח ומייצר את המבנה..."):
+                        try:
+                            if idx == 0:
+                                xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
+                                file_suffix = "000_Master_Key_STG"
+                            elif idx == 1:
+                                xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
+                                file_suffix = "010_Master_STG"
+                            elif idx == 2:
+                                xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
+                                file_suffix = "020_Master_CLN"
+                            else:
+                                xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
+                                file_suffix = "030_Detail_CLN"
+                            
+                            st.session_state.xml_content = xml_content
+                            st.session_state.file_suffix = file_suffix
+                            st.success("🎉 תהליך העיבוד הסתיים בהצלחה!")
+                        except Exception as e:
+                            st.error(f"❌ שגיאה: {str(e)}")
+
+    # אזור הפלט והורדה (יופיע למטה לאחר יצירת הקובץ)
     if "xml_content" in st.session_state and st.session_state.xml_content:
         st.divider()
-        
-        # שימוש במבנה נקי להורדה
         st.markdown(f"<h4 style='color: #475569;'>📦 פלט מוכן להורדה עבור {st.session_state.file_suffix}</h4>", unsafe_allow_html=True)
         
         st.download_button(
@@ -1020,7 +1015,6 @@ def main():
             use_container_width=True
         )
         
-        # תצוגה מקדימה נקייה
         with st.expander("🔍 הצג תצוגה מקדימה של ה-XML שנוצר", expanded=False):
             st.code(st.session_state.xml_content, language="xml")
 
