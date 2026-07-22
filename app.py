@@ -1011,11 +1011,15 @@ def main():
         key="ddl_input"
     )
 
-    folder_name = st.text_input(
-        "שם FOLDER באינפורמטיקה:",
-        value="DW_Drugs",
-        key="folder_name_input"
-    ).strip() or "DW_Drugs"
+    # Folder name input - only for XML modes
+    if "GENERATE DDL DELTA TABLES" not in delta_stage:
+        folder_name = st.text_input(
+            "שם FOLDER באינפורמטיקה:",
+            value="DW_Drugs",
+            key="folder_name_input"
+        ).strip() or "DW_Drugs"
+    else:
+        folder_name = "DW_Drugs"  # Default, won't be used
     
     st.markdown("---")
     
