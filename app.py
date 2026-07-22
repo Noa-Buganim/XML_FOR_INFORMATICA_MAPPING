@@ -859,164 +859,194 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
 
 
 # =====================================================================
+# GENERATE DDL DELTA TABLES
+# =====================================================================
+
+def generate_ddl_delta_tables(ddl_text):
+    """
+    Parse a DDL script with one or more CREATE TABLE statements.
+    For each table ending with _MASTER  → generate _KEY_STG, _STG, _CLN in schema DELTA.
+    For each table ending with _DETAIL  → generate _CLN in schema DELTA.
+    IDENTITY and DEFAULT clauses are stripped; only column name + datatype are kept.
+    """
+    block_re = re.compile(
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)\s*(?=CREATE\s+TABLE|$)',
+        re.IGNORECASE | re.DOTALL,
+    )
+    col_pattern = re.compile(
+        r'^\[(\w+)\]\s+\[(\w+)\](?:\(([^)]+)\))?',
+        re.IGNORECASE,
+    )
+
+    def build_col_list(cols):
+        lines = []
+        for i, (col_name, type_sql) in enumerate(cols):
+            comma = "," if i < len(cols) - 1 else ""
+            lines.append(f"\t[{col_name}] {type_sql}{comma}")
+        return lines
+
+    output_lines = []
+
+    for m in block_re.finditer(ddl_text):
+        table_name = m.group(1)
+        body = m.group(2)
+        upper_name = table_name.upper()
+
+        if not (upper_name.endswith('_MASTER') or upper_name.endswith('_DETAIL')):
+            continue
+
+        # Parse columns – strip IDENTITY / DEFAULT / NULL keywords
+        cols = []
+        for line in body.splitlines():
+            line = line.strip().rstrip(',')
+            if re.match(r'(CONSTRAINT|PRIMARY|UNIQUE|CHECK|FOREIGN)', line, re.IGNORECASE):
+                continue
+            cm = col_pattern.match(line)
+            if not cm:
+                continue
+            col_name = cm.group(1)
+            base_type = cm.group(2)
+            precision_str = (cm.group(3) or "").strip()
+            type_sql = f"[{base_type}]({precision_str})" if precision_str else f"[{base_type}]"
+            cols.append((col_name, type_sql))
+
+        if not cols:
+            continue
+
+        if upper_name.endswith('_MASTER'):
+            # 1. _KEY_STG  (fixed 3 columns)
+            key_stg_name = f"{table_name}_KEY_STG"
+            output_lines += [
+                f"CREATE TABLE [DELTA].[{key_stg_name}] (",
+                "\t[ENTITY_ID] [varchar](50) NOT NULL,",
+                "\t[timestamp_sequence] [varchar](50) NOT NULL,",
+                "\t[OFFSET] [bigint] NULL",
+                ");",
+                "",
+            ]
+
+            # 2. _STG  (all columns from source)
+            stg_name = f"{table_name}_STG"
+            output_lines.append(f"CREATE TABLE [DELTA].[{stg_name}] (")
+            output_lines += build_col_list(cols)
+            output_lines += [");", ""]
+
+            # 3. _CLN  (all columns from source)
+            cln_name = f"{table_name}_CLN"
+            output_lines.append(f"CREATE TABLE [DELTA].[{cln_name}] (")
+            output_lines += build_col_list(cols)
+            output_lines += [");", ""]
+
+        elif upper_name.endswith('_DETAIL'):
+            # _CLN only
+            cln_name = f"{table_name}_CLN"
+            output_lines.append(f"CREATE TABLE [DELTA].[{cln_name}] (")
+            output_lines += build_col_list(cols)
+            output_lines += [");", ""]
+
+    if not output_lines:
+        return "-- לא נמצאו טבלאות המסתיימות ב-_MASTER או _DETAIL בקלט"
+
+    return "\n".join(output_lines)
+
+
+# =====================================================================
 # STREAMLIT UI
-# =====================================================================
-# =====================================================================
-# STREAMLIT UI - גרסה מודרנית, צבעים רגועים ולוגיקה מתוקנת
 # =====================================================================
 
 def main():
-    # הגדרת פריסה רחבה ומודרנית
-    st.set_page_config(page_title="Informatica XML Generator", layout="wide", page_icon="⚙️")
+    st.set_page_config(page_title="Informatica XML Generator", layout="wide")
     
-    # הזרקת CSS מותאם אישית לפלטת צבעים רגועה (Slate & Mint) ועיצוב RTL
     st.markdown("""
     <style>
-    /* עיצוב ויישור כללי ל-RTL */
-    .main * {
-        direction: rtl;
-        text-align: right;
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    }
-    
-    /* תיקון ספציפי לתיבות קוד וטקסט באנגלית */
-    div[data-baseweb="textarea"] textarea, pre, code {
-        direction: ltr !important;
-        text-align: left !important;
-        font-family: 'Fira Code', 'Courier New', monospace !important;
-        background-color: #F8FAFC !important;
-        color: #334155 !important;
-    }
-    
-    /* כותרת ראשית בצבע סלייט רגוע */
-    .main-title {
-        color: #334155;
-        font-weight: 600;
-        font-size: 2rem;
-        margin-bottom: 5px;
-    }
-    
-    /* עיצוב הלשוניות (Tabs) למראה שטוח ומודרני */
-    button[data-baseweb="tab"] {
-        font-size: 15px !important;
-        font-weight: 500 !important;
-        color: #64748B !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #334155 !important;
-        border-bottom-color: #475569 !important;
-    }
-    
-    /* שדרוג תיבות התוכן (Containers) */
-    div[data-testid="stContainer"] {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 8px !important;
-        padding: 20px !important;
-    }
-    
-    /* כפתור הורדה מותאם אישית - ירוק מנטה/מרווה */
-    div.stDownloadButton > button {
-        background-color: #10B981 !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 6px !important;
-        padding: 0.5rem 1rem !important;
-        transition: background-color 0.2s ease;
-    }
-    div.stDownloadButton > button:hover {
-        background-color: #059669 !important;
-    }
+    h1, h2, h3 { text-align: right; direction: rtl; }
     </style>
     """, unsafe_allow_html=True)
     
-    # כותרת מודרנית ונקייה
-    st.markdown("<h1 class='main-title'>⚙️ מחולל מפות Informatica</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #64748B; font-size: 15px; margin-top: 0;'>המרת סקריפטי SQL ל-XML ארגוני בתהליך אוטומטי מנוהל.</p>", unsafe_allow_html=True)
-    st.divider()
+    st.title("🔧 Informatica PowerCenter XML Generator")
+    st.markdown("<h2 style='text-align: right; direction: rtl;'>יוצר XML עבור 4 שלבי Delta</h2>", unsafe_allow_html=True)
+    st.markdown("---")
     
-    # הגדרת רשימת השלבים
-    tabs_list = [
-        "🔑 DELTA 000 (Key STG)", 
-        "📊 DELTA 010 (Master STG)", 
-        "🧹 DELTA 020 (Master CLN)", 
-        "📋 DELTA 030 (Detail CLN)"
-    ]
-    
-    # יצירת ה-Tabs
-    tabs = st.tabs(tabs_list)
-    
-    # עטיפת התוכן והלוגיקה בתוך כל Tab בצורה תקינה
-    for idx, tab in enumerate(tabs):
-        current_stage = tabs_list[idx]
-        
-        with tab:
-            col_input, col_settings = st.columns([2, 1], gap="large")
-            
-            with col_input:
-                st.markdown("<h4 style='color: #475569;'>📥 קלט סקריפט SQL</h4>", unsafe_allow_html=True)
-                ddl_input = st.text_area(
-                    "הזן את ה-CREATE TABLE לניתוח:",
-                    height=300,
-                    placeholder="CREATE TABLE [dbo].[Table_Name] ( ... )",
-                    key=f"ddl_input_{idx}"
-                )
-                
-            with col_settings:
-                st.markdown("<h4 style='color: #475569;'>⚙️ קונפיגורציה</h4>", unsafe_allow_html=True)
-                
-                with st.container():
-                    folder_name = st.text_input(
-                        "תיקיית יעד (Folder):",
-                        value="DW_Drugs",
-                        key=f"folder_name_{idx}"
-                    ).strip() or "DW_Drugs"
-                    st.markdown("<small style='color: #94A3B8;'>קובע את הגדרת ה-Folder בתוך ה-XML שייוצר.</small>", unsafe_allow_html=True)
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                generate_clicked = st.button("✨ מעבד ומייצר מפה", key=f"btn_{idx}", use_container_width=True, type="primary")
+    delta_stage = st.radio(
+        "בחר את שלב ה-Delta:",
+        ["DELTA 000 - Master Key STG", "DELTA 010 - Master STG", "DELTA 020 - Master CLN", "DELTA 030 - Communication Detail CLN", "GENERATE DDL DELTA TABLES"],
+        index=0
+    )
 
-            # הרצת העיבוד בלחיצה
-            if generate_clicked:
-                if not ddl_input.strip():
-                    st.error("❌ אנא הדבק סקריפט SQL תחילה.")
-                else:
-                    with st.spinner("⏳ מנתח ומייצר את המבנה..."):
-                        try:
-                            if idx == 0:
-                                xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
-                                file_suffix = "000_Master_Key_STG"
-                            elif idx == 1:
-                                xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
-                                file_suffix = "010_Master_STG"
-                            elif idx == 2:
-                                xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
-                                file_suffix = "020_Master_CLN"
-                            else:
-                                xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
-                                file_suffix = "030_Detail_CLN"
-                            
-                            st.session_state.xml_content = xml_content
-                            st.session_state.file_suffix = file_suffix
-                            st.success("🎉 תהליך העיבוד הסתיים בהצלחה!")
-                        except Exception as e:
-                            st.error(f"❌ שגיאה: {str(e)}")
+    if "GENERATE DDL DELTA TABLES" in delta_stage:
+        st.markdown("### הזן סקריפט CREATE TABLE (יכול להכיל מספר טבלאות)")
+        st.info("טבלאות המסתיימות ב-_MASTER יניבו: _KEY_STG, _STG, _CLN בסכמה DELTA.\nטבלאות המסתיימות ב-_DETAIL יניבו: _CLN בסכמה DELTA.")
+    else:
+        st.markdown("### הזן CREATE TABLE DDL")
+    ddl_input = st.text_area(
+        "הדבק DDL:",
+        height=250,
+        placeholder="CREATE TABLE [schema].[table] (...)",
+        key="ddl_input"
+    )
 
-    # אזור הפלט והורדה (יופיע למטה לאחר יצירת הקובץ)
+    folder_name = st.text_input(
+        "שם FOLDER באינפורמטיקה:",
+        value="DW_Drugs",
+        key="folder_name_input"
+    ).strip() or "DW_Drugs"
+    
+    st.markdown("---")
+    
+    btn_label = "✨ ייצר DDL" if "GENERATE DDL DELTA TABLES" in delta_stage else "✨ ייצר XML"
+    if st.button(btn_label, use_container_width=True, type="primary"):
+        if not ddl_input.strip():
+            st.error("❌ אנא הדבק DDL")
+        else:
+            with st.spinner("⏳ מעבד..."):
+                try:
+                    if "GENERATE DDL DELTA TABLES" in delta_stage:
+                        result_content = generate_ddl_delta_tables(ddl_input)
+                        st.session_state.xml_content = result_content
+                        st.session_state.is_ddl_output = True
+                        st.success("✅ סקריפט DDL נוצר בהצלחה!")
+                    else:
+                        st.session_state.is_ddl_output = False
+                        if "DELTA 000" in delta_stage:
+                            xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
+                        elif "DELTA 010" in delta_stage:
+                            xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
+                        elif "DELTA 020" in delta_stage:
+                            xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
+                        else:
+                            xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
+                        st.session_state.xml_content = xml_content
+                        st.success("✅ XML נוצר בהצלחה!")
+                except Exception as e:
+                    st.error(f"❌ שגיאה: {str(e)}")
+
     if "xml_content" in st.session_state and st.session_state.xml_content:
-        st.divider()
-        st.markdown(f"<h4 style='color: #475569;'>📦 פלט מוכן להורדה עבור {st.session_state.file_suffix}</h4>", unsafe_allow_html=True)
-        
-        st.download_button(
-            label="📥 לחץ כאן להורדת קובץ ה-XML המוכן",
-            data=st.session_state.xml_content,
-            file_name=f"m_DELTA_{st.session_state.file_suffix}.xml",
-            mime="application/xml",
-            use_container_width=True
-        )
-        
-        with st.expander("🔍 הצג תצוגה מקדימה של ה-XML שנוצר", expanded=False):
-            st.code(st.session_state.xml_content, language="xml")
+        st.markdown("---")
+        is_ddl = st.session_state.get("is_ddl_output", False)
+        if is_ddl:
+            st.markdown("### 📄 סקריפט DDL שנוצר")
+            with st.expander("הצג DDL", expanded=True):
+                st.code(st.session_state.xml_content, language="sql")
+            st.download_button(
+                label="⬇️ הורד SQL",
+                data=st.session_state.xml_content,
+                file_name="delta_tables.sql",
+                mime="text/plain",
+                use_container_width=True,
+                type="primary"
+            )
+        else:
+            st.markdown("### 📄 XML שנוצר")
+            with st.expander("הצג XML", expanded=False):
+                st.code(st.session_state.xml_content, language="xml")
+            st.download_button(
+                label="⬇️ הורד XML",
+                data=st.session_state.xml_content,
+                file_name=f"informatica_{delta_stage.split()[1]}.xml",
+                mime="application/xml",
+                use_container_width=True,
+                type="primary"
+            )
 
 
 if __name__ == "__main__":
