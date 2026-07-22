@@ -587,54 +587,51 @@ def _parse_ddl_for_delta(ddl):
     return table_name, cols
 
 
+
 def _parse_all_ddl_blocks(ddl_text):
+    # Split by CREATE TABLE (preserving it at start of each part)
+    parts = re.split(r'(?=CREATE\s+TABLE)', ddl_text, flags=re.IGNORECASE)
+    
+    # Now extract table name and columns from each part
     block_re = re.compile(
-        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*)\)(?=\s*(?:ON|;|GO|$))',
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)\s*(?:ON|;|GO)',
         re.IGNORECASE | re.DOTALL,
     )
     col_pattern = re.compile(
-        r'\[(\w+)\]\s+\[(\w+)\](?:\(([^)]+)\))?\s*(IDENTITY[^,]*)?(NOT\s+NULL|NULL)?',
+        r'^\[(\w+)\]\s+\[(\w+)\](?:\(([^)]+)\))?',
         re.IGNORECASE,
     )
 
     blocks = []
-    for m in block_re.finditer(ddl_text):
+    for part in parts:
+        if not part.strip():
+            continue
+        m = block_re.search(part)
+        if not m:
+            continue
+        
         table_name = m.group(1)
         body = m.group(2)
         cols = []
         field_no = 1
         for line in body.splitlines():
             line = line.strip().rstrip(',')
+            if re.match(r'(CONSTRAINT|PRIMARY|UNIQUE|CHECK|FOREIGN)', line, re.IGNORECASE):
+                continue
             cm = col_pattern.match(line)
             if not cm:
                 continue
 
             col_name = cm.group(1)
-            base_type = cm.group(2).lower()
-            precision_str = cm.group(3) or ""
-            nullable = True if (cm.group(5) or "NULL").strip().upper() == "NULL" else False
-
-            if base_type in ("bigint",):
-                type_sql = "bigint"
-            elif base_type in ("int",):
-                type_sql = "int"
-            elif base_type in ("datetime",):
-                type_sql = "datetime"
-            elif base_type in ("date",):
-                type_sql = "date"
-            elif base_type in ("varchar", "nvarchar"):
-                p = precision_str.strip() if precision_str else "50"
-                type_sql = f"varchar({p})"
-            elif base_type in ("decimal", "numeric"):
-                ps = precision_str.strip() if precision_str else "18,0"
-                type_sql = f"decimal({ps})"
-            else:
-                type_sql = "varchar(50)"
-
-            cols.append({"name": col_name, "type_sql": type_sql, "field_no": field_no, "nullable": nullable})
+            base_type = cm.group(2)
+            precision_str = (cm.group(3) or "").strip()
+            type_sql = f"[{base_type}]({precision_str})" if precision_str else f"[{base_type}]"
+            cols.append((col_name, type_sql))
             field_no += 1
 
-        blocks.append((table_name, cols))
+        if cols:
+            blocks.append((table_name, cols))
+    
     return blocks
 
 
@@ -869,8 +866,11 @@ def generate_ddl_delta_tables(ddl_text):
     For each table ending with _DETAIL  → generate _CLN in schema DELTA.
     IDENTITY and DEFAULT clauses are stripped; only column name + datatype are kept.
     """
+    # Split by CREATE TABLE (preserving it at start of each part)
+    parts = re.split(r'(?=CREATE\s+TABLE)', ddl_text, flags=re.IGNORECASE)
+    
     block_re = re.compile(
-        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*)\)(?=\s*(?:ON|;|GO|$))',
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)\s*(?:ON|;|GO)',
         re.IGNORECASE | re.DOTALL,
     )
     col_pattern = re.compile(
@@ -887,7 +887,13 @@ def generate_ddl_delta_tables(ddl_text):
 
     output_lines = []
 
-    for m in block_re.finditer(ddl_text):
+    for part in parts:
+        if not part.strip():
+            continue
+        m = block_re.search(part)
+        if not m:
+            continue
+        
         table_name = m.group(1)
         body = m.group(2)
         upper_name = table_name.upper()
