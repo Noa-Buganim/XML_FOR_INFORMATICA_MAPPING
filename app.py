@@ -792,9 +792,9 @@ def generate_delta_020(ddl_text, folder_name="DW_Drugs"):
 def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
     try:
         blocks = _parse_all_ddl_blocks(ddl_text)
-        if not blocks:
-            table_name, cols = _parse_ddl_for_delta(ddl_text)
-            blocks = [(table_name, cols)]
+        
+        if len(blocks) < 2:
+            return "<!-- DELTA 030 - ERROR: נדרשות שתי טבלאות - אחת עם סיומת _MASTER ואחת עם סיומת _DETAIL -->"
 
         detail_block = None
         master_block = None
@@ -805,19 +805,17 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
             if master_block is None and "master" in ln:
                 master_block = (tname, tcols)
 
-        if detail_block is None:
-            detail_block = blocks[0]
-        if master_block is None:
-            master_block = blocks[1] if len(blocks) > 1 else ("member_demographic_master_cln", [
-                {"name": "TRANSACTION_ID", "type_sql": "bigint", "field_no": 1, "nullable": False},
-                {"name": "entity_id", "type_sql": "varchar(50)", "field_no": 2, "nullable": True},
-                {"name": "entity_type", "type_sql": "varchar(50)", "field_no": 3, "nullable": True},
-                {"name": "_data_timestamp_sequence", "type_sql": "varchar(50)", "field_no": 4, "nullable": True},
-                {"name": "offset", "type_sql": "bigint", "field_no": 5, "nullable": True},
-            ])
+        if detail_block is None or master_block is None:
+            return "<!-- DELTA 030 - ERROR: לא נמצאו שתי הטבלאות הנדרשות (_MASTER ו-_DETAIL) בקלט -->"
 
-        detail_name, cols = detail_block
-        master_name, src2_cols = master_block
+        detail_name, detail_cols_raw = detail_block
+        master_name, master_cols_raw = master_block
+
+        # Convert raw tuples to dict format for compatibility
+        detail_cols = [{"name": col[0], "type_sql": col[1], "field_no": i+1, "nullable": True} 
+                      for i, col in enumerate(detail_cols_raw)]
+        master_cols = [{"name": col[0], "type_sql": col[1], "field_no": i+1, "nullable": True} 
+                      for i, col in enumerate(master_cols_raw)]
 
         src1_name = detail_name
         if src1_name.lower().endswith("_stg"):
@@ -836,16 +834,16 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
         fld = add(repo, "FOLDER", NAME=folder_name, GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
                   DESCRIPTION="", PERMISSIONS="rwx------", UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8")
 
-        _build_source(fld, src1_name, "dwh-dev", "kfk", cols)
-        _build_source(fld, src2_name, "dwh-dev", "KFK", src2_cols)
-        _build_target(fld, target_name, cols)
+        _build_source(fld, src1_name, "dwh-dev", "kfk", detail_cols)
+        _build_source(fld, src2_name, "dwh-dev", "KFK", master_cols)
+        _build_target(fld, target_name, detail_cols)
         _build_two_source_delta_mapping(
             fld,
             mapping_name=mapping_name,
             src1_name=src1_name,
-            src1_cols=cols,
+            src1_cols=detail_cols,
             src2_name=src2_name,
-            src2_cols=src2_cols,
+            src2_cols=master_cols,
             target_name=target_name,
             source_filter=f"{src2_name}.TRANSACTION_ID is null",
         )
@@ -1002,14 +1000,46 @@ def main():
     if "GENERATE DDL DELTA TABLES" in delta_stage:
         st.markdown("### הזן סקריפט CREATE TABLE (יכול להכיל מספר טבלאות)")
         st.info("טבלאות המסתיימות ב-_MASTER יניבו: _KEY_STG, _STG, _CLN בסכמה DELTA.\nטבלאות המסתיימות ב-_DETAIL יניבו: _CLN בסכמה DELTA.")
+        ddl_input = st.text_area(
+            "הדבק DDL:",
+            height=250,
+            placeholder="CREATE TABLE [schema].[table] (...)",
+            key="ddl_input"
+        )
+        ddl_master_input = None
+        ddl_detail_input = None
+    elif "DELTA 030" in delta_stage:
+        st.markdown("### הזן שתי טבלאות DDL - MASTER ו-DETAIL")
+        st.info("הזן את טבלת ה-MASTER בתיבה הראשונה ואת טבלת ה-DETAIL בתיבה השנייה.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### טבלה MASTER")
+            ddl_master_input = st.text_area(
+                "הדבק DDL של טבלת MASTER:",
+                height=250,
+                placeholder="CREATE TABLE [schema].[table_master] (...)",
+                key="ddl_master_input"
+            )
+        with col2:
+            st.markdown("#### טבלה DETAIL")
+            ddl_detail_input = st.text_area(
+                "הדבק DDL של טבלת DETAIL:",
+                height=250,
+                placeholder="CREATE TABLE [schema].[table_detail] (...)",
+                key="ddl_detail_input"
+            )
+        ddl_input = f"{ddl_master_input}\n\n{ddl_detail_input}"
     else:
         st.markdown("### הזן CREATE TABLE DDL")
-    ddl_input = st.text_area(
-        "הדבק DDL:",
-        height=250,
-        placeholder="CREATE TABLE [schema].[table] (...)",
-        key="ddl_input"
-    )
+        ddl_input = st.text_area(
+            "הדבק DDL:",
+            height=250,
+            placeholder="CREATE TABLE [schema].[table] (...)",
+            key="ddl_input"
+        )
+        ddl_master_input = None
+        ddl_detail_input = None
 
     # Folder name input - only for XML modes
     if "GENERATE DDL DELTA TABLES" not in delta_stage:
@@ -1027,6 +1057,8 @@ def main():
     if st.button(btn_label, use_container_width=True, type="primary"):
         if not ddl_input.strip():
             st.error("❌ אנא הדבק DDL")
+        elif "DELTA 030" in delta_stage and (not ddl_master_input or not ddl_detail_input or not ddl_master_input.strip() or not ddl_detail_input.strip()):
+            st.error("❌ אנא הדבק שתי טבלאות - MASTER ו-DETAIL")
         else:
             with st.spinner("⏳ מעבד..."):
                 try:
