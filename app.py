@@ -589,7 +589,7 @@ def _parse_ddl_for_delta(ddl):
 
 def _parse_all_ddl_blocks(ddl_text):
     block_re = re.compile(
-        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)',
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*)\)(?=\s*(?:ON|;|GO|$))',
         re.IGNORECASE | re.DOTALL,
     )
     col_pattern = re.compile(
@@ -870,7 +870,7 @@ def generate_ddl_delta_tables(ddl_text):
     IDENTITY and DEFAULT clauses are stripped; only column name + datatype are kept.
     """
     block_re = re.compile(
-        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)',
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*)\)(?=\s*(?:ON|;|GO|$))',
         re.IGNORECASE | re.DOTALL,
     )
     col_pattern = re.compile(
@@ -914,13 +914,33 @@ def generate_ddl_delta_tables(ddl_text):
             continue
 
         if upper_name.endswith('_MASTER'):
-            # 1. _KEY_STG  (fixed 3 columns)
+            # 1. _KEY_STG  (fixed 3 columns from source with original lengths)
             key_stg_name = f"{table_name}_KEY_STG"
+            
+            # Find lengths from source columns
+            entity_id_col = None
+            timestamp_col = None
+            offset_col = None
+            
+            for col_name, type_sql in cols:
+                col_lower = col_name.lower()
+                if col_lower == 'entity_id':
+                    entity_id_col = type_sql
+                elif col_lower == '_data_timestamp_sequence' or col_lower == '_data_timestamp':
+                    timestamp_col = type_sql
+                elif col_lower == 'offset':
+                    offset_col = type_sql
+            
+            # Use defaults if not found
+            entity_id_type = entity_id_col if entity_id_col else '[varchar](100)'
+            timestamp_type = timestamp_col if timestamp_col else '[varchar](50)'
+            offset_type = offset_col if offset_col else '[bigint]'
+            
             output_lines += [
                 f"CREATE TABLE [DELTA].[{key_stg_name}] (",
-                "\t[ENTITY_ID] [varchar](50) NOT NULL,",
-                "\t[timestamp_sequence] [varchar](50) NOT NULL,",
-                "\t[OFFSET] [bigint] NULL",
+                f"\t[ENTITY_ID] {entity_id_type} NOT NULL,",
+                f"\t[timestamp_sequence] {timestamp_type} NOT NULL,",
+                f"\t[OFFSET] {offset_type} NULL",
                 ");",
                 "",
             ]
