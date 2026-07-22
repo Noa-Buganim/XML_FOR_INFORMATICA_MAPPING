@@ -675,13 +675,14 @@ def _build_target(parent, target_name, cols):
 def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, src2_name, src2_cols, target_name, source_filter=None):
     sq_name = f"SQ_{src1_name}"
     exp_name = "EXP_Transform"
+    rnk_name = "RNKTRANS"
 
     s1_entity_id = _pick_col(src1_cols, "entity_id")
-    s1_ts = _pick_col(src1_cols, "_data_timestamp_sequence")
+    s1_ts = _pick_col(src1_cols, "_data_timestamp")  # Fixed: changed from _data_timestamp_sequence
     s1_offset = _pick_col(src1_cols, "offset")
 
     s2_entity_id = _pick_col(src2_cols, "entity_id")
-    s2_ts = _pick_col(src2_cols, "_data_timestamp_sequence")
+    s2_ts = _pick_col(src2_cols, "_data_timestamp")  # Fixed: changed from _data_timestamp_sequence
     s2_offset = _pick_col(src2_cols, "offset")
     s2_trans_id = _pick_col(src2_cols, "TRANSACTION_ID")
     s2_entity_type = _pick_col(src2_cols, "entity_type")
@@ -697,10 +698,9 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
         PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="50", SCALE="0")
 
     join_value = (
-        f"{src1_name}.{s1_entity_id} = {src2_name}.{s2_entity_id} "
-        f"AND {src1_name}.{s1_ts} < {src2_name}.{s2_ts} "
-        f"AND {src1_name}.{s1_offset} < {src2_name}.{s2_offset} "
-        f"AND {src2_name}.{s2_trans_id} <= $$TRANSACTION_ID"
+        f"{src1_name}.{s1_entity_id} = {src2_name}.{s2_entity_id} AND "
+        f"{src1_name}.{s1_offset}={src2_name}.{s2_offset} AND "
+        f"{src1_name}.{s1_ts}={src2_name}.{s2_ts}"
     )
     add(sq, "TABLEATTRIBUTE", NAME="Sql Query", VALUE="")
     add(sq, "TABLEATTRIBUTE", NAME="User Defined Join", VALUE=join_value)
@@ -718,6 +718,24 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
             EXPRESSIONTYPE="GENERAL", NAME=c["name"], PICTURETEXT="", PORTTYPE="INPUT/OUTPUT",
             PRECISION=sm["PRECISION"], SCALE=sm["SCALE"])
 
+    # Add RANK transformation
+    rnk = add(mp, "TRANSFORMATION", DESCRIPTION="", NAME=rnk_name, OBJECTVERSION="1", REUSABLE="NO", TYPE="Rank", VERSIONNUMBER="1")
+    add(rnk, "TRANSFORMFIELD", DATATYPE="integer", DEFAULTVALUE="ERROR('transformation error')", DESCRIPTION="", EXPRESSION="RANKINDEX",
+        EXPRESSIONTYPE="RANKINDEX", NAME="RANKINDEX", PICTURETEXT="", PORTTYPE="OUTPUT", PRECISION="10", SCALE="0")
+    add(rnk, "TRANSFORMFIELD", DATATYPE="string", DEFAULTVALUE="", DESCRIPTION="", EXPRESSION=s2_trans_id,
+        EXPRESSIONTYPE="RANKPORT", NAME=s2_trans_id, PICTURETEXT="", PORTTYPE="INPUT/OUTPUT", PRECISION="50", SCALE="0")
+    for c in src1_cols:
+        if c["name"].lower() not in [s2_trans_id.lower()]:
+            sm = delta_000_sq_meta(c["type_sql"])
+            add(rnk, "TRANSFORMFIELD", DATATYPE=sm["DATATYPE"], DEFAULTVALUE="", DESCRIPTION="", EXPRESSION=c["name"],
+                EXPRESSIONTYPE="GROUPBY", NAME=c["name"], PICTURETEXT="", PORTTYPE="INPUT/OUTPUT",
+                PRECISION=sm["PRECISION"], SCALE=sm["SCALE"])
+    for n, v in [("Cache Directory", "$PMCacheDir"), ("Top/Bottom", "Top"), ("Number of Ranks", "1"),
+                 ("Case Sensitive String Comparison", "YES"), ("Tracing Level", "Normal"),
+                 ("Rank Data Cache Size", "Auto"), ("Rank Index Cache Size", "Auto"),
+                 ("Transformation Scope", "All Input")]:
+        add(rnk, "TABLEATTRIBUTE", NAME=n, VALUE=v)
+
     add(mp, "INSTANCE", DBDNAME="dwh-dev", DESCRIPTION="", NAME=src1_name, TRANSFORMATION_NAME=src1_name,
         TRANSFORMATION_TYPE="Source Definition", TYPE="SOURCE")
     add(mp, "INSTANCE", DBDNAME="dwh-dev", DESCRIPTION="", NAME=src2_name, TRANSFORMATION_NAME=src2_name,
@@ -730,14 +748,22 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
     add(sq_inst, "ASSOCIATED_SOURCE_INSTANCE", NAME=src2_name)
     add(mp, "INSTANCE", DESCRIPTION="", NAME=exp_name, REUSABLE="NO", TRANSFORMATION_NAME=exp_name,
         TRANSFORMATION_TYPE="Expression", TYPE="TRANSFORMATION")
+    add(mp, "INSTANCE", DESCRIPTION="", NAME=rnk_name, REUSABLE="NO", TRANSFORMATION_NAME=rnk_name,
+        TRANSFORMATION_TYPE="Rank", TYPE="TRANSFORMATION")
 
     for c in src1_cols:
         conn(mp, c["name"], src1_name, "Source Definition", c["name"], sq_name, "Source Qualifier")
     conn(mp, s2_entity_type, src2_name, "Source Definition", "entity_type_current", sq_name, "Source Qualifier")
     for c in src1_cols:
         conn(mp, c["name"], sq_name, "Source Qualifier", c["name"], exp_name, "Expression")
+    # Connect EXP_Transform to RANK
+    conn(mp, s2_trans_id, exp_name, "Expression", s2_trans_id, rnk_name, "Rank")
     for c in src1_cols:
-        conn(mp, c["name"], exp_name, "Expression", c["name"], target_name, "Target Definition")
+        if c["name"].lower() != s2_trans_id.lower():
+            conn(mp, c["name"], exp_name, "Expression", c["name"], rnk_name, "Rank")
+    # Connect RANK to Target
+    for c in src1_cols:
+        conn(mp, c["name"], rnk_name, "Rank", c["name"], target_name, "Target Definition")
 
     add(mp, "TARGETLOADORDER", ORDER="1", TARGETINSTANCE=target_name)
     add(mp, "MAPPINGVARIABLE", DATATYPE="bigint", DEFAULTVALUE="0", DESCRIPTION="Transaction ID Parameter",
@@ -833,7 +859,8 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
         else:
             base_name = src1_name
 
-        src2_name = master_name
+        # Fixed: Master source name needs _CLN suffix
+        src2_name = f"{master_name}_CLN" if not master_name.lower().endswith("_cln") else master_name
         target_name = f"{base_name}_CLN"
         mapping_name = f"m_DELTA_030_{base_name}_cln"
 
