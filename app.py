@@ -794,7 +794,9 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
         blocks = _parse_all_ddl_blocks(ddl_text)
         
         if len(blocks) < 2:
-            return "<!-- DELTA 030 - ERROR: נדרשות שתי טבלאות - אחת עם סיומת _MASTER ואחת עם סיומת _DETAIL -->"
+            # טעם debug: הדפס כמה בלוקים מצאנו
+            found_tables = f"נמצאו {len(blocks)} טבלאות: {[name for name, _ in blocks]}" if blocks else "לא נמצאו טבלאות בקלט"
+            return f"<!-- DELTA 030 - ERROR: נדרשות שתי טבלאות - אחת עם סיומת _MASTER ואחת עם סיומת _DETAIL. {found_tables} -->"
 
         detail_block = None
         master_block = None
@@ -806,7 +808,13 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
                 master_block = (tname, tcols)
 
         if detail_block is None or master_block is None:
-            return "<!-- DELTA 030 - ERROR: לא נמצאו שתי הטבלאות הנדרשות (_MASTER ו-_DETAIL) בקלט -->"
+            found = []
+            if detail_block:
+                found.append(f"DETAIL: {detail_block[0]}")
+            if master_block:
+                found.append(f"MASTER: {master_block[0]}")
+            found_str = ", ".join(found) if found else "לא נמצא"
+            return f"<!-- DELTA 030 - ERROR: לא נמצאו שתי הטבלאות הנדרשות (_MASTER ו-_DETAIL) בקלט. {found_str} -->"
 
         detail_name, detail_cols_raw = detail_block
         master_name, master_cols_raw = master_block
