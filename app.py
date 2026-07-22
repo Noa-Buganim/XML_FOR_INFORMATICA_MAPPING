@@ -594,7 +594,7 @@ def _parse_all_ddl_blocks(ddl_text):
     
     # Now extract table name and columns from each part
     block_re = re.compile(
-        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)\s*(?:ON|;|GO)',
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\(([\s\S]*?)\)\s*(?=ON|;|GO|$)',
         re.IGNORECASE | re.DOTALL,
     )
     col_pattern = re.compile(
