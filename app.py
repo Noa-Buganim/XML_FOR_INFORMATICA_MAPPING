@@ -589,7 +589,7 @@ def _parse_ddl_for_delta(ddl):
 
 def _parse_all_ddl_blocks(ddl_text):
     block_re = re.compile(
-        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)\s*(?=CREATE\s+TABLE|$)',
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)',
         re.IGNORECASE | re.DOTALL,
     )
     col_pattern = re.compile(
@@ -870,7 +870,7 @@ def generate_ddl_delta_tables(ddl_text):
     IDENTITY and DEFAULT clauses are stripped; only column name + datatype are kept.
     """
     block_re = re.compile(
-        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)\s*(?=CREATE\s+TABLE|$)',
+        r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?\s*\((.*?)\)',
         re.IGNORECASE | re.DOTALL,
     )
     col_pattern = re.compile(
