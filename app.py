@@ -894,9 +894,100 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
 # WF PARAMETERS - Workflow XML Generator
 # =====================================================================
 
+def get_wf_parameters_template():
+    """Return WF_PARAMETERS template XML as string - FULL template with all mappings and sessions"""
+    return """<?xml version="1.0" encoding="windows-1255"?>
+<!DOCTYPE POWERMART SYSTEM "powrmart.dtd">
+<POWERMART CREATION_DATE="__CREATION_DATE__" REPOSITORY_VERSION="187.96">
+<REPOSITORY NAME="InfoDW_QA_Rep" VERSION="187" CODEPAGE="MS1255" DATABASETYPE="Microsoft SQL Server">
+<FOLDER NAME="__FOLDER_NAME__" GROUP="" OWNER="Administrator" SHARED="NOTSHARED" DESCRIPTION="" PERMISSIONS="rwx------" UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8">
+    <SOURCE BUSINESSNAME ="" DATABASETYPE ="Microsoft SQL Server" DBDNAME ="DWH" DESCRIPTION ="" NAME ="ETL_PARAMETERS_VALUES" OBJECTVERSION ="1" OWNERNAME ="mng" VERSIONNUMBER ="5">
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="int" DESCRIPTION ="" FIELDNUMBER ="1" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="PRIMARY KEY" LENGTH ="11" LEVEL ="0" NAME ="PARAM_CODE" NULLABLE ="NOTNULL" OCCURS ="0" OFFSET ="0" PHYSICALLENGTH ="10" PHYSICALOFFSET ="0" PICTURETEXT ="" PRECISION ="10" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="int" DESCRIPTION ="" FIELDNUMBER ="2" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="PRIMARY KEY" LENGTH ="11" LEVEL ="0" NAME ="PARAM_VALUE_CODE" NULLABLE ="NOTNULL" OCCURS ="0" OFFSET ="11" PHYSICALLENGTH ="10" PHYSICALOFFSET ="10" PICTURETEXT ="" PRECISION ="10" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="smallint" DESCRIPTION ="" FIELDNUMBER ="3" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="6" LEVEL ="0" NAME ="MANUAL_VALUE_IND" NULLABLE ="NULL" OCCURS ="0" OFFSET ="22" PHYSICALLENGTH ="5" PHYSICALOFFSET ="20" PICTURETEXT ="" PRECISION ="5" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="bigint" DESCRIPTION ="" FIELDNUMBER ="4" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="20" LEVEL ="0" NAME ="PARAM_VALUE_INT" NULLABLE ="NULL" OCCURS ="0" OFFSET ="28" PHYSICALLENGTH ="19" PHYSICALOFFSET ="25" PICTURETEXT ="" PRECISION ="19" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="datetime" DESCRIPTION ="" FIELDNUMBER ="5" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="19" LEVEL ="0" NAME ="PARAM_VALUE_DATETIME" NULLABLE ="NULL" OCCURS ="0" OFFSET ="48" PHYSICALLENGTH ="23" PHYSICALOFFSET ="44" PICTURETEXT ="" PRECISION ="23" SCALE ="3" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="varchar" DESCRIPTION ="" FIELDNUMBER ="6" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="0" LEVEL ="0" NAME ="PARAM_VALUE_VARCHAR" NULLABLE ="NULL" OCCURS ="0" OFFSET ="67" PHYSICALLENGTH ="500" PHYSICALOFFSET ="67" PICTURETEXT ="" PRECISION ="500" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="datetime" DESCRIPTION ="" FIELDNUMBER ="7" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="19" LEVEL ="0" NAME ="CREATE_DATE" NULLABLE ="NULL" OCCURS ="0" OFFSET ="67" PHYSICALLENGTH ="23" PHYSICALOFFSET ="567" PICTURETEXT ="" PRECISION ="23" SCALE ="3" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="datetime" DESCRIPTION ="" FIELDNUMBER ="8" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="19" LEVEL ="0" NAME ="UPDATE_DATE" NULLABLE ="NULL" OCCURS ="0" OFFSET ="86" PHYSICALLENGTH ="23" PHYSICALOFFSET ="590" PICTURETEXT ="" PRECISION ="23" SCALE ="3" USAGE_FLAGS =""/>
+    </SOURCE>
+    <SOURCE BUSINESSNAME ="" DATABASETYPE ="Microsoft SQL Server" DBDNAME ="DWH" DESCRIPTION ="" NAME ="ETL_PARAMETERS_HEADERS" OBJECTVERSION ="1" OWNERNAME ="mng" VERSIONNUMBER ="5">
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="int" DESCRIPTION ="" FIELDNUMBER ="1" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="PRIMARY KEY" LENGTH ="11" LEVEL ="0" NAME ="PARAM_CODE" NULLABLE ="NOTNULL" OCCURS ="0" OFFSET ="0" PHYSICALLENGTH ="10" PHYSICALOFFSET ="0" PICTURETEXT ="" PRECISION ="10" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="varchar" DESCRIPTION ="" FIELDNUMBER ="2" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="0" LEVEL ="0" NAME ="PARAM_NAME" NULLABLE ="NULL" OCCURS ="0" OFFSET ="11" PHYSICALLENGTH ="100" PHYSICALOFFSET ="10" PICTURETEXT ="" PRECISION ="100" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="varchar" DESCRIPTION ="" FIELDNUMBER ="3" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="0" LEVEL ="0" NAME ="PARAM_FILE_NAME" NULLABLE ="NULL" OCCURS ="0" OFFSET ="11" PHYSICALLENGTH ="100" PHYSICALOFFSET ="110" PICTURETEXT ="" PRECISION ="100" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="varchar" DESCRIPTION ="" FIELDNUMBER ="4" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="0" LEVEL ="0" NAME ="MODEL_NAME" NULLABLE ="NULL" OCCURS ="0" OFFSET ="11" PHYSICALLENGTH ="100" PHYSICALOFFSET ="210" PICTURETEXT ="" PRECISION ="100" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="varchar" DESCRIPTION ="" FIELDNUMBER ="5" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="0" LEVEL ="0" NAME ="KAFKA_SHEET" NULLABLE ="NULL" OCCURS ="0" OFFSET ="11" PHYSICALLENGTH ="1000" PHYSICALOFFSET ="310" PICTURETEXT ="" PRECISION ="1000" SCALE ="0" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="datetime" DESCRIPTION ="" FIELDNUMBER ="6" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="19" LEVEL ="0" NAME ="CREATE_DATE" NULLABLE ="NULL" OCCURS ="0" OFFSET ="11" PHYSICALLENGTH ="23" PHYSICALOFFSET ="1310" PICTURETEXT ="" PRECISION ="23" SCALE ="3" USAGE_FLAGS =""/>
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="datetime" DESCRIPTION ="" FIELDNUMBER ="7" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="19" LEVEL ="0" NAME ="UPDATE_DATE" NULLABLE ="NULL" OCCURS ="0" OFFSET ="30" PHYSICALLENGTH ="23" PHYSICALOFFSET ="1333" PICTURETEXT ="" PRECISION ="23" SCALE ="3" USAGE_FLAGS =""/>
+    </SOURCE>
+    <SOURCE BUSINESSNAME ="" DATABASETYPE ="Microsoft SQL Server" DBDNAME ="SQL-DWH-DW_Management" DESCRIPTION ="" NAME ="DUAL" OBJECTVERSION ="1" OWNERNAME ="dwh" VERSIONNUMBER ="5">
+        <SOURCEFIELD BUSINESSNAME ="" DATATYPE ="char" DESCRIPTION ="" FIELDNUMBER ="1" FIELDPROPERTY ="0" FIELDTYPE ="ELEMITEM" HIDDEN ="NO" KEYTYPE ="NOT A KEY" LENGTH ="0" LEVEL ="0" NAME ="DUMMY" NULLABLE ="NULL" OCCURS ="0" OFFSET ="0" PHYSICALLENGTH ="1" PHYSICALOFFSET ="0" PICTURETEXT ="" PRECISION ="1" SCALE ="0" USAGE_FLAGS =""/>
+    </SOURCE>
+    <TARGET BUSINESSNAME ="" CONSTRAINT ="" DATABASETYPE ="Flat File" DESCRIPTION ="" NAME ="FLAT_FILE" OBJECTVERSION ="1" TABLEOPTIONS ="" VERSIONNUMBER ="5">
+        <FLATFILE CODEPAGE ="MS1255" CONSECDELIMITERSASONE ="NO" DELIMITED ="YES" DELIMITERS ="," ESCAPE_CHARACTER ="" KEEPESCAPECHAR ="NO" LINESEQUENTIAL ="NO" MULTIDELIMITERSASAND ="NO" NULLCHARTYPE ="ASCII" NULL_CHARACTER ="*" PADBYTES ="1" QUOTE_CHARACTER ="NONE" REPEATABLE ="NO" ROWDELIMITER ="0" SKIPROWS ="0" STRIPTRAILINGBLANKS ="NO"/>
+        <TARGETFIELD BUSINESSNAME ="" DATATYPE ="string" DESCRIPTION ="" FIELDNUMBER ="1" KEYTYPE ="NOT A KEY" NAME ="PARAM_FILE_VALUE" NULLABLE ="NULL" PICTURETEXT ="" PRECISION ="4000" SCALE ="0"/>
+        <TABLEATTRIBUTE NAME ="Datetime Format" VALUE ="A  19 mm/dd/yyyy hh24:mi:ss"/>
+        <TABLEATTRIBUTE NAME ="Thousand Separator" VALUE ="None"/>
+        <TABLEATTRIBUTE NAME ="Decimal Separator" VALUE ="."/>
+        <TABLEATTRIBUTE NAME ="Line Endings" VALUE ="System default"/>
+    </TARGET>
+    <MAPPING DESCRIPTION ="" ISVALID ="YES" NAME ="Shortcut_to_m_Parameter_File" OBJECTVERSION ="1" VERSIONNUMBER ="5">
+        <TRANSFORMATION DESCRIPTION ="" NAME ="AGG_MAX_PARAM_VALUE_CODE" OBJECTVERSION ="1" REUSABLE ="NO" TYPE ="Aggregator" VERSIONNUMBER ="5">
+            <TRANSFORMFIELD DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="" EXPRESSION ="PARAM_CODE" EXPRESSIONTYPE ="GROUPBY" NAME ="PARAM_CODE" PICTURETEXT ="" PORTTYPE ="INPUT/OUTPUT" PRECISION ="10" SCALE ="0"/>
+            <TRANSFORMFIELD DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="" NAME ="PARAM_VALUE_CODE" PICTURETEXT ="" PORTTYPE ="INPUT" PRECISION ="10" SCALE ="0"/>
+            <TRANSFORMFIELD DATATYPE ="integer" DEFAULTVALUE ="ERROR(&apos;transformation error&apos;)" DESCRIPTION ="" EXPRESSION ="MAX(PARAM_VALUE_CODE)" EXPRESSIONTYPE ="GENERAL" NAME ="MAX_PARAM_VALUE_CODE" PICTURETEXT ="" PORTTYPE ="OUTPUT" PRECISION ="10" SCALE ="0"/>
+            <TABLEATTRIBUTE NAME ="Cache Directory" VALUE ="$PMCacheDir"/>
+            <TABLEATTRIBUTE NAME ="Tracing Level" VALUE ="Normal"/>
+            <TABLEATTRIBUTE NAME ="Sorted Input" VALUE ="YES"/>
+            <TABLEATTRIBUTE NAME ="Aggregator Data Cache Size" VALUE ="Auto"/>
+            <TABLEATTRIBUTE NAME ="Aggregator Index Cache Size" VALUE ="Auto"/>
+            <TABLEATTRIBUTE NAME ="Transformation Scope" VALUE ="All Input"/>
+        </TRANSFORMATION>
+        <INSTANCE DESCRIPTION ="" NAME ="FLAT_FILE" TRANSFORMATION_NAME ="FLAT_FILE" TRANSFORMATION_TYPE ="Target Definition" TYPE ="TARGET"/>
+        <TARGETLOADORDER ORDER ="1" TARGETINSTANCE ="FLAT_FILE"/>
+        <MAPPINGVARIABLE AGGFUNCTION ="MAX" DATATYPE ="string" DEFAULTVALUE ="" DESCRIPTION ="" ISEXPRESSIONVARIABLE ="NO" ISPARAM ="NO" NAME ="$$m_PARAMETER_CODES" PRECISION ="200" SCALE ="0" USERDEFINED ="YES"/>
+        <ERPINFO/>
+    </MAPPING>
+    <CONFIG DESCRIPTION ="Default session configuration object" ISDEFAULT ="YES" NAME ="default_session_config" VERSIONNUMBER ="21">
+        <ATTRIBUTE NAME ="Advanced" VALUE =""/>
+        <ATTRIBUTE NAME ="Constraint based load ordering" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Cache LOOKUP() function" VALUE ="YES"/>
+        <ATTRIBUTE NAME ="Default buffer block size" VALUE ="Auto"/>
+        <ATTRIBUTE NAME ="Optimization Level" VALUE ="Medium"/>
+        <ATTRIBUTE NAME ="DateTime Format String" VALUE ="MM/DD/YYYY HH24:MI:SS.US"/>
+        <ATTRIBUTE NAME ="Stop on errors" VALUE ="1"/>
+    </CONFIG>
+    <WORKFLOW DESCRIPTION ="" ISENABLED ="YES" ISRUNNABLESERVICE ="NO" ISSERVICE ="NO" ISVALID ="YES" NAME ="__WF_NAME__" REUSABLE_SCHEDULER ="NO" SCHEDULERNAME ="Scheduler" SERVERNAME ="Int_Prod" SERVER_DOMAINNAME ="Domain_DW_QA" SUSPEND_ON_ERROR ="NO" TASKS_MUST_RUN_ON_SERVER ="NO" VERSIONNUMBER ="2">
+        <SCHEDULER DESCRIPTION ="" NAME ="Scheduler" REUSABLE ="NO" VERSIONNUMBER ="2">
+            <SCHEDULEINFO SCHEDULETYPE ="ONDEMAND"/>
+        </SCHEDULER>
+        <TASK DESCRIPTION ="" NAME ="Assignment" REUSABLE ="NO" TYPE ="Assignment" VERSIONNUMBER ="2">
+            <ATTRIBUTE NAME ="Assignment Condition" VALUE =""/>
+            <VALUEPAIR EXECORDER ="1" NAME ="$$WF_PARAMETER_FILE_NAME" REVERSEASSIGNMENT ="NO" VALUE ="&apos;__FILE_NAME__.par&apos;"/>
+            <VALUEPAIR EXECORDER ="2" NAME ="$$PARAM_CODE" REVERSEASSIGNMENT ="NO" VALUE ="__PARAM_CODE__"/>
+            <VALUEPAIR EXECORDER ="3" NAME ="$$PARAMETER_CODES" REVERSEASSIGNMENT ="NO" VALUE ="&apos;__PARAM_CODE__&apos;"/>
+        </TASK>
+        <TASK DESCRIPTION ="" NAME ="Start" REUSABLE ="NO" TYPE ="Start" VERSIONNUMBER ="2"/>
+        <TASKINSTANCE DESCRIPTION ="" FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN ="NO" FAIL_PARENT_IF_INSTANCE_FAILS ="YES" ISENABLED ="YES" NAME ="Assignment" REUSABLE ="NO" TASKNAME ="Assignment" TASKTYPE ="Assignment" TREAT_INPUTLINK_AS_AND ="YES"/>
+        <TASKINSTANCE DESCRIPTION ="" ISENABLED ="YES" NAME ="Start" REUSABLE ="NO" TASKNAME ="Start" TASKTYPE ="Start"/>
+        <WORKFLOWLINK CONDITION ="" FROMTASK ="Start" TOTASK ="Assignment"/>
+        <WORKFLOWVARIABLE DATATYPE ="nstring" DEFAULTVALUE ="" DESCRIPTION ="" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$$WF_PARAMETER_FILE_NAME" USERDEFINED ="YES"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$$PARAM_CODE" USERDEFINED ="YES"/>
+        <WORKFLOWVARIABLE DATATYPE ="nstring" DEFAULTVALUE ="" DESCRIPTION ="" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$$PARAMETER_CODES" USERDEFINED ="YES"/>
+        <ATTRIBUTE NAME ="Parameter Filename" VALUE ="$PMRootDir&#x5c;ParamFiles&#x5c;__FILE_NAME__.par"/>
+        <ATTRIBUTE NAME ="Write Backward Compatible Workflow Log File" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Workflow Log File Name" VALUE ="__WF_NAME__.log"/>
+        <ATTRIBUTE NAME ="Workflow Log File Directory" VALUE ="$PMWorkflowLogDir&#x5c;"/>
+        <ATTRIBUTE NAME ="Service Level Name" VALUE ="Default"/>
+        <ATTRIBUTE NAME ="Expected Service Time" VALUE ="1"/>
+    </WORKFLOW>
+</FOLDER>
+</REPOSITORY>
+</POWERMART>"""
+
 def generate_wf_parameters(topic, file_name, param_code, folder_name="DW_Drugs"):
     """
-    Generate WF_PARAMETERS XML for Informatica PowerCenter (creates new XML dynamically).
+    Generate WF_PARAMETERS XML for Informatica PowerCenter (embedded template).
     topic:       business topic (e.g. ISSUE_DRUG)  → WF name: WF_PARAMETERS_ISSUE_DRUG
     file_name:   parameter file base name without .par extension (e.g. KFK_ISSUED_DRUG)
     param_code:  numeric parameter code (e.g. 230)
@@ -907,93 +998,15 @@ def generate_wf_parameters(topic, file_name, param_code, folder_name="DW_Drugs")
     file_name_upper = file_name.strip().upper()
     param_code_str = str(param_code).strip()
     
-    # Create XML structure dynamically
-    pm = ET.Element("POWERMART", CREATION_DATE=now, REPOSITORY_VERSION="187.96")
-    repo = add(pm, "REPOSITORY", NAME="InfoDW_QA_Rep", VERSION="187", CODEPAGE="MS1255", DATABASETYPE="Microsoft SQL Server")
-    fld = add(repo, "FOLDER", NAME=folder_name, GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
-              DESCRIPTION="", PERMISSIONS="rwx------", UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8")
+    # Get template and substitute placeholders
+    xml = get_wf_parameters_template()
+    xml = xml.replace("__CREATION_DATE__", now)
+    xml = xml.replace("__FOLDER_NAME__", folder_name)
+    xml = xml.replace("__WF_NAME__", wf_name)
+    xml = xml.replace("__FILE_NAME__", file_name_upper)
+    xml = xml.replace("__PARAM_CODE__", param_code_str)
     
-    # Add CONFIG (minimal default session config)
-    cfg = add(fld, "CONFIG", DESCRIPTION="Default session configuration object", ISDEFAULT="YES", 
-              NAME="default_session_config", VERSIONNUMBER="21")
-    cfg_attrs = [
-        ("Advanced", ""),
-        ("Constraint based load ordering", "NO"),
-        ("Cache LOOKUP() function", "YES"),
-        ("Default buffer block size", "Auto"),
-        ("Optimization Level", "Medium"),
-        ("DateTime Format String", "MM/DD/YYYY HH24:MI:SS.US"),
-        ("Stop on errors", "1"),
-        ("Error handling", ""),
-    ]
-    for attr_name, attr_val in cfg_attrs:
-        add(cfg, "ATTRIBUTE", NAME=attr_name, VALUE=attr_val)
-    
-    # Add WORKFLOW
-    wf = add(fld, "WORKFLOW", DESCRIPTION="", ISENABLED="YES", ISRUNNABLESERVICE="NO", ISSERVICE="NO", 
-             ISVALID="YES", NAME=wf_name, REUSABLE_SCHEDULER="NO", SCHEDULERNAME="Scheduler", 
-             SERVERNAME="Int_Prod", SERVER_DOMAINNAME="Domain_DW_QA", SUSPEND_ON_ERROR="NO", 
-             TASKS_MUST_RUN_ON_SERVER="NO", VERSIONNUMBER="2")
-    
-    # Add SCHEDULER
-    sched = add(wf, "SCHEDULER", DESCRIPTION="", NAME="Scheduler", REUSABLE="NO", VERSIONNUMBER="2")
-    add(sched, "SCHEDULEINFO", SCHEDULETYPE="ONDEMAND")
-    
-    # Add Assignment TASK
-    task_assign = add(wf, "TASK", DESCRIPTION="", NAME="Assignment", REUSABLE="NO", TYPE="Assignment", VERSIONNUMBER="2")
-    add(task_assign, "ATTRIBUTE", NAME="Assignment Condition", VALUE="")
-    add(task_assign, "VALUEPAIR", EXECORDER="1", NAME="$$WF_PARAMETER_FILE_NAME", REVERSEASSIGNMENT="NO", 
-        VALUE=f"'{file_name_upper}.par'")
-    add(task_assign, "VALUEPAIR", EXECORDER="2", NAME="$$PARAM_CODE", REVERSEASSIGNMENT="NO", VALUE=param_code_str)
-    add(task_assign, "VALUEPAIR", EXECORDER="3", NAME="$$PARAMETER_CODES", REVERSEASSIGNMENT="NO", 
-        VALUE=f"'{param_code_str}'")
-    
-    # Add Start TASK
-    add(wf, "TASK", DESCRIPTION="", NAME="Start", REUSABLE="NO", TYPE="Start", VERSIONNUMBER="2")
-    
-    # Add dummy SESSION (minimal structure)
-    sess = add(wf, "SESSION", DESCRIPTION="", ISVALID="YES", MAPPINGNAME="DummyMapping", 
-               NAME="s_dummy_session", REUSABLE="NO", SORTORDER="Binary", VERSIONNUMBER="2")
-    add(sess, "ATTRIBUTE", NAME="General Options", VALUE="")
-    add(sess, "ATTRIBUTE", NAME="Write Backward Compatible Session Log File", VALUE="NO")
-    add(sess, "ATTRIBUTE", NAME="Session Log File Name", VALUE="dummy.log")
-    
-    # Add TASKINSTANCES
-    add(wf, "TASKINSTANCE", DESCRIPTION="", FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN="NO", 
-        FAIL_PARENT_IF_INSTANCE_FAILS="YES", ISENABLED="YES", NAME="s_dummy_session", REUSABLE="NO",
-        TASKNAME="s_dummy_session", TASKTYPE="Session", TREAT_INPUTLINK_AS_AND="YES")
-    add(wf, "TASKINSTANCE", DESCRIPTION="", FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN="NO", 
-        FAIL_PARENT_IF_INSTANCE_FAILS="YES", ISENABLED="YES", NAME="Assignment", REUSABLE="NO",
-        TASKNAME="Assignment", TASKTYPE="Assignment", TREAT_INPUTLINK_AS_AND="YES")
-    add(wf, "TASKINSTANCE", DESCRIPTION="", ISENABLED="YES", NAME="Start", REUSABLE="NO",
-        TASKNAME="Start", TASKTYPE="Start")
-    
-    # Add WORKFLOWLINKS
-    add(wf, "WORKFLOWLINK", CONDITION="", FROMTASK="Start", TOTASK="Assignment")
-    add(wf, "WORKFLOWLINK", CONDITION="$Assignment.Status=SUCCEEDED", FROMTASK="Assignment", TOTASK="s_dummy_session")
-    
-    # Add WORKFLOWVARIABLES
-    add(wf, "WORKFLOWVARIABLE", DATATYPE="nstring", DEFAULTVALUE="", DESCRIPTION="", ISNULL="NO", 
-        ISPERSISTENT="NO", NAME="$$WF_PARAMETER_FILE_NAME", USERDEFINED="YES")
-    add(wf, "WORKFLOWVARIABLE", DATATYPE="integer", DEFAULTVALUE="", DESCRIPTION="", ISNULL="NO",
-        ISPERSISTENT="NO", NAME="$$PARAM_CODE", USERDEFINED="YES")
-    add(wf, "WORKFLOWVARIABLE", DATATYPE="nstring", DEFAULTVALUE="", DESCRIPTION="", ISNULL="NO",
-        ISPERSISTENT="NO", NAME="$$PARAMETER_CODES", USERDEFINED="YES")
-    
-    # Add ATTRIBUTES
-    add(wf, "ATTRIBUTE", NAME="Parameter Filename", VALUE=f"$PMRootDir\\ParamFiles\\{file_name_upper}.par")
-    add(wf, "ATTRIBUTE", NAME="Write Backward Compatible Workflow Log File", VALUE="NO")
-    add(wf, "ATTRIBUTE", NAME="Workflow Log File Name", VALUE=f"{wf_name}.log")
-    add(wf, "ATTRIBUTE", NAME="Workflow Log File Directory", VALUE="$PMWorkflowLogDir\\")
-    add(wf, "ATTRIBUTE", NAME="Service Level Name", VALUE="Default")
-    add(wf, "ATTRIBUTE", NAME="Expected Service Time", VALUE="1")
-    
-    # Render to XML string
-    body = ET.tostring(pm, encoding="unicode")
-    pretty = minidom.parseString(body.encode("utf-8")).toprettyxml(indent="    ", encoding="utf-8").decode("utf-8")
-    output = '<?xml version="1.0" encoding="windows-1255"?>\n<!DOCTYPE POWERMART SYSTEM "powrmart.dtd">\n' + "\n".join(pretty.splitlines()[1:])
-    
-    return output
+    return xml
 
 
 # =====================================================================
