@@ -704,7 +704,7 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
     )
     add(sq, "TABLEATTRIBUTE", NAME="Sql Query", VALUE="")
     add(sq, "TABLEATTRIBUTE", NAME="User Defined Join", VALUE=join_value)
-    sf = source_filter if source_filter is not None else f"{src2_name}.{s2_trans_id} is null"
+    sf = source_filter if source_filter is not None else ""
     add(sq, "TABLEATTRIBUTE", NAME="Source Filter", VALUE=sf)
     for n, v in [("Number Of Sorted Ports", "0"), ("Tracing Level", "Normal"), ("Select Distinct", "NO"),
                  ("Is Partitionable", "NO"), ("Pre SQL", ""), ("Post SQL", ""),
@@ -727,8 +727,10 @@ def _build_two_source_delta_mapping(fld, *, mapping_name, src1_name, src1_cols, 
     for c in src1_cols:
         if c["name"].lower() not in [s2_trans_id.lower()]:
             sm = delta_000_sq_meta(c["type_sql"])
+            # row_create_Date should be GENERAL, not GROUPBY
+            expr_type = "GENERAL" if c["name"].lower() == "row_create_date" else "GROUPBY"
             add(rnk, "TRANSFORMFIELD", DATATYPE=sm["DATATYPE"], DEFAULTVALUE="", DESCRIPTION="", EXPRESSION=c["name"],
-                EXPRESSIONTYPE="GROUPBY", NAME=c["name"], PICTURETEXT="", PORTTYPE="INPUT/OUTPUT",
+                EXPRESSIONTYPE=expr_type, NAME=c["name"], PICTURETEXT="", PORTTYPE="INPUT/OUTPUT",
                 PRECISION=sm["PRECISION"], SCALE=sm["SCALE"])
     for n, v in [("Cache Directory", "$PMCacheDir"), ("Top/Bottom", "Top"), ("Number of Ranks", "1"),
                  ("Case Sensitive String Comparison", "YES"), ("Tracing Level", "Normal"),
@@ -880,7 +882,7 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
             src2_name=src2_name,
             src2_cols=master_cols,
             target_name=target_name,
-            source_filter=f"{src2_name}.TRANSACTION_ID is null",
+            source_filter="",
         )
 
         return _render_powermart_xml(pm)
