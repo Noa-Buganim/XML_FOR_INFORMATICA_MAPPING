@@ -891,6 +891,112 @@ def generate_delta_030(ddl_text, folder_name="DW_Drugs"):
 
 
 # =====================================================================
+# WF PARAMETERS - Workflow XML Generator
+# =====================================================================
+
+def generate_wf_parameters(topic, file_name, param_code, folder_name="DW_Drugs"):
+    """
+    Generate WF_PARAMETERS XML for Informatica PowerCenter (creates new XML dynamically).
+    topic:       business topic (e.g. ISSUE_DRUG)  → WF name: WF_PARAMETERS_ISSUE_DRUG
+    file_name:   parameter file base name without .par extension (e.g. KFK_ISSUED_DRUG)
+    param_code:  numeric parameter code (e.g. 230)
+    folder_name: Informatica folder name
+    """
+    now = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    wf_name = f"WF_PARAMETERS_{topic.strip().upper()}"
+    file_name_upper = file_name.strip().upper()
+    param_code_str = str(param_code).strip()
+    
+    # Create XML structure dynamically
+    pm = ET.Element("POWERMART", CREATION_DATE=now, REPOSITORY_VERSION="187.96")
+    repo = add(pm, "REPOSITORY", NAME="InfoDW_QA_Rep", VERSION="187", CODEPAGE="MS1255", DATABASETYPE="Microsoft SQL Server")
+    fld = add(repo, "FOLDER", NAME=folder_name, GROUP="", OWNER="Administrator", SHARED="NOTSHARED",
+              DESCRIPTION="", PERMISSIONS="rwx------", UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8")
+    
+    # Add CONFIG (minimal default session config)
+    cfg = add(fld, "CONFIG", DESCRIPTION="Default session configuration object", ISDEFAULT="YES", 
+              NAME="default_session_config", VERSIONNUMBER="21")
+    cfg_attrs = [
+        ("Advanced", ""),
+        ("Constraint based load ordering", "NO"),
+        ("Cache LOOKUP() function", "YES"),
+        ("Default buffer block size", "Auto"),
+        ("Optimization Level", "Medium"),
+        ("DateTime Format String", "MM/DD/YYYY HH24:MI:SS.US"),
+        ("Stop on errors", "1"),
+        ("Error handling", ""),
+    ]
+    for attr_name, attr_val in cfg_attrs:
+        add(cfg, "ATTRIBUTE", NAME=attr_name, VALUE=attr_val)
+    
+    # Add WORKFLOW
+    wf = add(fld, "WORKFLOW", DESCRIPTION="", ISENABLED="YES", ISRUNNABLESERVICE="NO", ISSERVICE="NO", 
+             ISVALID="YES", NAME=wf_name, REUSABLE_SCHEDULER="NO", SCHEDULERNAME="Scheduler", 
+             SERVERNAME="Int_Prod", SERVER_DOMAINNAME="Domain_DW_QA", SUSPEND_ON_ERROR="NO", 
+             TASKS_MUST_RUN_ON_SERVER="NO", VERSIONNUMBER="2")
+    
+    # Add SCHEDULER
+    sched = add(wf, "SCHEDULER", DESCRIPTION="", NAME="Scheduler", REUSABLE="NO", VERSIONNUMBER="2")
+    add(sched, "SCHEDULEINFO", SCHEDULETYPE="ONDEMAND")
+    
+    # Add Assignment TASK
+    task_assign = add(wf, "TASK", DESCRIPTION="", NAME="Assignment", REUSABLE="NO", TYPE="Assignment", VERSIONNUMBER="2")
+    add(task_assign, "ATTRIBUTE", NAME="Assignment Condition", VALUE="")
+    add(task_assign, "VALUEPAIR", EXECORDER="1", NAME="$$WF_PARAMETER_FILE_NAME", REVERSEASSIGNMENT="NO", 
+        VALUE=f"'{file_name_upper}.par'")
+    add(task_assign, "VALUEPAIR", EXECORDER="2", NAME="$$PARAM_CODE", REVERSEASSIGNMENT="NO", VALUE=param_code_str)
+    add(task_assign, "VALUEPAIR", EXECORDER="3", NAME="$$PARAMETER_CODES", REVERSEASSIGNMENT="NO", 
+        VALUE=f"'{param_code_str}'")
+    
+    # Add Start TASK
+    add(wf, "TASK", DESCRIPTION="", NAME="Start", REUSABLE="NO", TYPE="Start", VERSIONNUMBER="2")
+    
+    # Add dummy SESSION (minimal structure)
+    sess = add(wf, "SESSION", DESCRIPTION="", ISVALID="YES", MAPPINGNAME="DummyMapping", 
+               NAME="s_dummy_session", REUSABLE="NO", SORTORDER="Binary", VERSIONNUMBER="2")
+    add(sess, "ATTRIBUTE", NAME="General Options", VALUE="")
+    add(sess, "ATTRIBUTE", NAME="Write Backward Compatible Session Log File", VALUE="NO")
+    add(sess, "ATTRIBUTE", NAME="Session Log File Name", VALUE="dummy.log")
+    
+    # Add TASKINSTANCES
+    add(wf, "TASKINSTANCE", DESCRIPTION="", FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN="NO", 
+        FAIL_PARENT_IF_INSTANCE_FAILS="YES", ISENABLED="YES", NAME="s_dummy_session", REUSABLE="NO",
+        TASKNAME="s_dummy_session", TASKTYPE="Session", TREAT_INPUTLINK_AS_AND="YES")
+    add(wf, "TASKINSTANCE", DESCRIPTION="", FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN="NO", 
+        FAIL_PARENT_IF_INSTANCE_FAILS="YES", ISENABLED="YES", NAME="Assignment", REUSABLE="NO",
+        TASKNAME="Assignment", TASKTYPE="Assignment", TREAT_INPUTLINK_AS_AND="YES")
+    add(wf, "TASKINSTANCE", DESCRIPTION="", ISENABLED="YES", NAME="Start", REUSABLE="NO",
+        TASKNAME="Start", TASKTYPE="Start")
+    
+    # Add WORKFLOWLINKS
+    add(wf, "WORKFLOWLINK", CONDITION="", FROMTASK="Start", TOTASK="Assignment")
+    add(wf, "WORKFLOWLINK", CONDITION="$Assignment.Status=SUCCEEDED", FROMTASK="Assignment", TOTASK="s_dummy_session")
+    
+    # Add WORKFLOWVARIABLES
+    add(wf, "WORKFLOWVARIABLE", DATATYPE="nstring", DEFAULTVALUE="", DESCRIPTION="", ISNULL="NO", 
+        ISPERSISTENT="NO", NAME="$$WF_PARAMETER_FILE_NAME", USERDEFINED="YES")
+    add(wf, "WORKFLOWVARIABLE", DATATYPE="integer", DEFAULTVALUE="", DESCRIPTION="", ISNULL="NO",
+        ISPERSISTENT="NO", NAME="$$PARAM_CODE", USERDEFINED="YES")
+    add(wf, "WORKFLOWVARIABLE", DATATYPE="nstring", DEFAULTVALUE="", DESCRIPTION="", ISNULL="NO",
+        ISPERSISTENT="NO", NAME="$$PARAMETER_CODES", USERDEFINED="YES")
+    
+    # Add ATTRIBUTES
+    add(wf, "ATTRIBUTE", NAME="Parameter Filename", VALUE=f"$PMRootDir\\ParamFiles\\{file_name_upper}.par")
+    add(wf, "ATTRIBUTE", NAME="Write Backward Compatible Workflow Log File", VALUE="NO")
+    add(wf, "ATTRIBUTE", NAME="Workflow Log File Name", VALUE=f"{wf_name}.log")
+    add(wf, "ATTRIBUTE", NAME="Workflow Log File Directory", VALUE="$PMWorkflowLogDir\\")
+    add(wf, "ATTRIBUTE", NAME="Service Level Name", VALUE="Default")
+    add(wf, "ATTRIBUTE", NAME="Expected Service Time", VALUE="1")
+    
+    # Render to XML string
+    body = ET.tostring(pm, encoding="unicode")
+    pretty = minidom.parseString(body.encode("utf-8")).toprettyxml(indent="    ", encoding="utf-8").decode("utf-8")
+    output = '<?xml version="1.0" encoding="windows-1255"?>\n<!DOCTYPE POWERMART SYSTEM "powrmart.dtd">\n' + "\n".join(pretty.splitlines()[1:])
+    
+    return output
+
+
+# =====================================================================
 # GENERATE DDL DELTA TABLES
 # =====================================================================
 
@@ -1030,11 +1136,37 @@ def main():
     
     delta_stage = st.radio(
         "בחר את שלב ה-Delta:",
-        ["DELTA 000 - Master Key STG", "DELTA 010 - Master STG", "DELTA 020 - Master CLN", "DELTA 030 - Communication Detail CLN", "GENERATE DDL DELTA TABLES"],
+        ["DELTA 000 - Master Key STG", "DELTA 010 - Master STG", "DELTA 020 - Master CLN", "DELTA 030 - Communication Detail CLN", "GENERATE DDL DELTA TABLES", "WF PARAMETERS"],
         index=0
     )
 
-    if "GENERATE DDL DELTA TABLES" in delta_stage:
+    if "WF PARAMETERS" in delta_stage:
+        st.markdown("### יצירת XML לוורקפלואו WF_PARAMETERS")
+        st.info("הזן את הפרטים ליצירת ה-Workflow. שם ה-WF ייווצר אוטומטית בתבנית: WF_PARAMETERS_<נושא>.")
+        col_wf1, col_wf2 = st.columns(2)
+        with col_wf1:
+            wf_topic = st.text_input(
+                "נושא עסקי (לשם ה-WF):",
+                placeholder="לדוגמא: ISSUE_DRUG",
+                key="wf_topic"
+            ).strip().upper()
+            wf_file_name = st.text_input(
+                "שם קובץ הפרמטרים (ללא סיומת .par):",
+                placeholder="לדוגמא: KFK_ISSUED_DRUG",
+                key="wf_file_name"
+            ).strip().upper()
+        with col_wf2:
+            wf_param_code = st.text_input(
+                "קוד פרמטר ($$PARAM_CODE):",
+                placeholder="לדוגמא: 230",
+                key="wf_param_code"
+            ).strip()
+            if wf_topic:
+                st.info(f"שם ה-WF שייווצר: **WF_PARAMETERS_{wf_topic}**")
+        ddl_input = ""
+        ddl_master_input = None
+        ddl_detail_input = None
+    elif "GENERATE DDL DELTA TABLES" in delta_stage:
         st.markdown("### הזן סקריפט CREATE TABLE (יכול להכיל מספר טבלאות)")
         st.info("טבלאות המסתיימות ב-_MASTER יניבו: _KEY_STG, _STG, _CLN בסכמה DELTA.\nטבלאות המסתיימות ב-_DETAIL יניבו: _CLN בסכמה DELTA.")
         ddl_input = st.text_area(
@@ -1079,7 +1211,13 @@ def main():
         ddl_detail_input = None
 
     # Folder name input - only for XML modes
-    if "GENERATE DDL DELTA TABLES" not in delta_stage:
+    if "GENERATE DDL DELTA TABLES" not in delta_stage and "WF PARAMETERS" not in delta_stage:
+        folder_name = st.text_input(
+            "שם FOLDER באינפורמטיקה:",
+            value="DW_Drugs",
+            key="folder_name_input"
+        ).strip() or "DW_Drugs"
+    elif "WF PARAMETERS" in delta_stage:
         folder_name = st.text_input(
             "שם FOLDER באינפורמטיקה:",
             value="DW_Drugs",
@@ -1090,9 +1228,37 @@ def main():
     
     st.markdown("---")
     
-    btn_label = "✨ ייצר DDL" if "GENERATE DDL DELTA TABLES" in delta_stage else "✨ ייצר XML"
+    if "WF PARAMETERS" in delta_stage:
+        btn_label = "✨ ייצר WF XML"
+    elif "GENERATE DDL DELTA TABLES" in delta_stage:
+        btn_label = "✨ ייצר DDL"
+    else:
+        btn_label = "✨ ייצר XML"
+
     if st.button(btn_label, use_container_width=True, type="primary"):
-        if not ddl_input.strip():
+        if "WF PARAMETERS" in delta_stage:
+            if not wf_topic:
+                st.error("❌ אנא הזן נושא עסקי לשם ה-WF")
+            elif not wf_file_name:
+                st.error("❌ אנא הזן שם קובץ פרמטרים")
+            elif not wf_param_code:
+                st.error("❌ אנא הזן קוד פרמטר")
+            else:
+                with st.spinner("⏳ מעבד..."):
+                    try:
+                        xml_content = generate_wf_parameters(
+                            topic=wf_topic,
+                            file_name=wf_file_name,
+                            param_code=wf_param_code,
+                            folder_name=folder_name
+                        )
+                        st.session_state.xml_content = xml_content
+                        st.session_state.is_ddl_output = False
+                        st.session_state.wf_download_name = f"WF_PARAMETERS_{wf_topic}.XML"
+                        st.success(f"✅ XML נוצר בהצלחה! שם הקובץ: WF_PARAMETERS_{wf_topic}.XML")
+                    except Exception as e:
+                        st.error(f"❌ שגיאה: {str(e)}")
+        elif not ddl_input.strip():
             st.error("❌ אנא הדבק DDL")
         elif "DELTA 030" in delta_stage and (not ddl_master_input or not ddl_detail_input or not ddl_master_input.strip() or not ddl_detail_input.strip()):
             st.error("❌ אנא הדבק שתי טבלאות - MASTER ו-DETAIL")
@@ -1138,10 +1304,11 @@ def main():
             st.markdown("### 📄 XML שנוצר")
             with st.expander("הצג XML", expanded=False):
                 st.code(st.session_state.xml_content, language="xml")
+            download_name = st.session_state.get("wf_download_name") or f"informatica_{delta_stage.split()[1]}.xml"
             st.download_button(
                 label="⬇️ הורד XML",
                 data=st.session_state.xml_content,
-                file_name=f"informatica_{delta_stage.split()[1]}.xml",
+                file_name=download_name,
                 mime="application/xml",
                 use_container_width=True,
                 type="primary"
