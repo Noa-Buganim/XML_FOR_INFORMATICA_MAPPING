@@ -396,7 +396,7 @@ def delta_010_build_xml(src1_name, src1_fields_raw, src2_name, src2_fields_raw, 
     src1_fields = delta_010_calc_offsets(src1_fields_raw)
     src2_fields = delta_010_calc_offsets(src2_fields_raw)
     
-    tgt_name = src1_name
+    tgt_name = src1_name + "_STG"  # Add _STG suffix to target name
     sq_name = "SQ_" + src1_name
     mapping_name = cfg["mapping_prefix"] + src1_name + "_STG"  # Add _STG suffix to mapping name
     tgt_instance_name = tgt_name + "_target"
