@@ -1262,6 +1262,79 @@ def generate_wf_parameters(topic, file_name, param_code, folder_name="DW_Drugs")
 
 
 # =====================================================================
+# WF_DELTA - WORKFLOW XML GENERATOR
+# =====================================================================
+
+def get_wf_delta_template():
+    """
+    Return embedded XML template for WF_DELTA workflow (Informatica PowerCenter).
+    Placeholders: __CREATION_DATE__, __FOLDER_NAME__, __WF_NAME__, __FILE_NAME__
+    """
+    return """<?xml version="1.0" encoding="windows-1255"?>
+<!DOCTYPE POWERMART SYSTEM "powrmart.dtd">
+<POWERMART CREATION_DATE="__CREATION_DATE__" REPOSITORY_VERSION="187.96">
+<REPOSITORY NAME="InfoDW_QA_Rep" VERSION="187" CODEPAGE="MS1255" DATABASETYPE="Microsoft SQL Server">
+<FOLDER NAME="__FOLDER_NAME__" GROUP="" OWNER="Administrator" SHARED="NOTSHARED" DESCRIPTION="" PERMISSIONS="rwx------" UUID="620f71cd-f2d3-4541-9b90-9c08ea2afbf8">
+    <WORKFLOW DESCRIPTION ="" ISENABLED ="YES" ISRUNNABLESERVICE ="NO" ISSERVICE ="NO" ISVALID ="NO" NAME ="__WF_NAME__" REUSABLE_SCHEDULER ="NO" SCHEDULERNAME ="Scheduler" SERVERNAME ="Int_Prod" SERVER_DOMAINNAME ="Domain_DW_QA" SUSPEND_ON_ERROR ="NO" TASKS_MUST_RUN_ON_SERVER ="NO" VERSIONNUMBER ="1">
+        <SCHEDULER DESCRIPTION ="" NAME ="Scheduler" REUSABLE ="NO" VERSIONNUMBER ="1">
+            <SCHEDULEINFO SCHEDULETYPE ="ONDEMAND"/>
+        </SCHEDULER>
+        <TASK DESCRIPTION ="" NAME ="Start" REUSABLE ="NO" TYPE ="Start" VERSIONNUMBER ="1"/>
+        <TASKINSTANCE DESCRIPTION ="" ISENABLED ="YES" NAME ="Start" REUSABLE ="NO" TASKNAME ="Start" TASKTYPE ="Start"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task started" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.StartTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task completed" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.EndTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="Status of this task&apos;s execution" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.Status" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="Status of the previous task that is not disabled" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.PrevTaskStatus" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="Error code for this task&apos;s execution" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.ErrorCode" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="string" DEFAULTVALUE ="" DESCRIPTION ="Error message for this task&apos;s execution" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.ErrorMsg" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="nstring" DEFAULTVALUE ="" DESCRIPTION ="" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$$TRANSACTION_ID" USERDEFINED ="YES"/>
+        <ATTRIBUTE NAME ="Parameter Filename" VALUE ="$PMRootDir&#x5c;ParamFiles&#x5c;__FILE_NAME__.par"/>
+        <ATTRIBUTE NAME ="Write Backward Compatible Workflow Log File" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Workflow Log File Name" VALUE ="__WF_NAME__.log"/>
+        <ATTRIBUTE NAME ="Workflow Log File Directory" VALUE ="$PMWorkflowLogDir&#x5c;"/>
+        <ATTRIBUTE NAME ="Save Workflow log by" VALUE ="By runs"/>
+        <ATTRIBUTE NAME ="Save workflow log for these runs" VALUE ="0"/>
+        <ATTRIBUTE NAME ="Service Name" VALUE =""/>
+        <ATTRIBUTE NAME ="Service Timeout" VALUE ="0"/>
+        <ATTRIBUTE NAME ="Is Service Visible" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Is Service Protected" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Fail task after wait time" VALUE ="0"/>
+        <ATTRIBUTE NAME ="Enable HA recovery" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Automatically recover terminated tasks" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Service Level Name" VALUE ="Default"/>
+        <ATTRIBUTE NAME ="Allow concurrent run with unique run instance name" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Allow concurrent run with same run instance name" VALUE ="NO"/>
+        <ATTRIBUTE NAME ="Maximum number of concurrent runs" VALUE ="0"/>
+        <ATTRIBUTE NAME ="Assigned Web Services Hubs" VALUE =""/>
+        <ATTRIBUTE NAME ="Maximum number of concurrent runs per Hub" VALUE ="1000"/>
+        <ATTRIBUTE NAME ="Expected Service Time" VALUE ="1"/>
+    </WORKFLOW>
+</FOLDER>
+</REPOSITORY>
+</POWERMART>"""
+
+def generate_wf_delta(topic, file_name, folder_name="DW_Drugs"):
+    """
+    Generate WF_DELTA XML for Informatica PowerCenter (embedded template).
+    topic:       business topic (e.g. ISSUE_DRUG)  → WF name: WF_DELTA_ISSUE_DRUG
+    file_name:   parameter file base name without .par extension (e.g. KFK_ISSUED_DRUG)
+    folder_name: Informatica folder name
+    """
+    now = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    wf_name = f"WF_DELTA_{topic.strip().upper()}"
+    file_name_upper = file_name.strip().upper()
+    
+    # Get template and substitute placeholders
+    xml = get_wf_delta_template()
+    xml = xml.replace("__CREATION_DATE__", now)
+    xml = xml.replace("__FOLDER_NAME__", folder_name)
+    xml = xml.replace("__WF_NAME__", wf_name)
+    xml = xml.replace("__FILE_NAME__", file_name_upper)
+    
+    return xml
+
+
+# =====================================================================
 # GENERATE DDL DELTA TABLES
 # =====================================================================
 
@@ -1401,7 +1474,7 @@ def main():
     
     delta_stage = st.radio(
         "בחר את שלב ה-Delta:",
-        ["DELTA 000 - Master Key STG", "DELTA 010 - Master STG", "DELTA 020 - Master CLN", "DELTA 030 - Communication Detail CLN", "GENERATE DDL DELTA TABLES", "WF PARAMETERS"],
+        ["DELTA 000 - Master Key STG", "DELTA 010 - Master STG", "DELTA 020 - Master CLN", "DELTA 030 - Communication Detail CLN", "GENERATE DDL DELTA TABLES", "WF PARAMETERS", "WF DELTA"],
         index=0
     )
 
@@ -1431,6 +1504,36 @@ def main():
         ddl_input = ""
         ddl_master_input = None
         ddl_detail_input = None
+    elif "WF DELTA" in delta_stage:
+        st.markdown("### יצירת XML לוורקפלואו WF_DELTA")
+        st.info("הזן את הפרטים ליצירת ה-Workflow. שם ה-WF ייווצר אוטומטית בתבנית: WF_DELTA_<נושא>.")
+        col_wf1, col_wf2 = st.columns(2)
+        with col_wf1:
+            wf_delta_topic = st.text_input(
+                "נושא עסקי (לשם ה-WF):",
+                placeholder="לדוגמא: ISSUE_DRUG",
+                key="wf_delta_topic"
+            ).strip().upper()
+            wf_delta_file_name = st.text_input(
+                "שם קובץ הפרמטרים (ללא סיומת .par):",
+                placeholder="לדוגמא: KFK_ISSUED_DRUG",
+                key="wf_delta_file_name"
+            ).strip().upper()
+        with col_wf2:
+            wf_delta_folder = st.text_input(
+                "שם FOLDER באינפורמטיקה:",
+                value="DW_Drugs",
+                key="wf_delta_folder"
+            ).strip() or "DW_Drugs"
+            if wf_delta_topic:
+                st.info(f"שם ה-WF שייווצר: **WF_DELTA_{wf_delta_topic}**")
+        ddl_input = ""
+        ddl_master_input = None
+        ddl_detail_input = None
+        folder_name = wf_delta_folder
+        wf_topic = None
+        wf_file_name = None
+        wf_param_code = None
     elif "GENERATE DDL DELTA TABLES" in delta_stage:
         st.markdown("### הזן סקריפט CREATE TABLE (יכול להכיל מספר טבלאות)")
         st.info("טבלאות המסתיימות ב-_MASTER יניבו: _KEY_STG, _STG, _CLN בסכמה DELTA.\nטבלאות המסתיימות ב-_DETAIL יניבו: _CLN בסכמה DELTA.")
@@ -1476,7 +1579,7 @@ def main():
         ddl_detail_input = None
 
     # Folder name input - only for XML modes
-    if "GENERATE DDL DELTA TABLES" not in delta_stage and "WF PARAMETERS" not in delta_stage:
+    if "GENERATE DDL DELTA TABLES" not in delta_stage and "WF PARAMETERS" not in delta_stage and "WF DELTA" not in delta_stage:
         folder_name = st.text_input(
             "שם FOLDER באינפורמטיקה:",
             value="DW_Drugs",
@@ -1495,6 +1598,8 @@ def main():
     
     if "WF PARAMETERS" in delta_stage:
         btn_label = "✨ ייצר WF XML"
+    elif "WF DELTA" in delta_stage:
+        btn_label = "✨ ייצר WF DELTA XML"
     elif "GENERATE DDL DELTA TABLES" in delta_stage:
         btn_label = "✨ ייצר DDL"
     else:
@@ -1521,6 +1626,25 @@ def main():
                         st.session_state.is_ddl_output = False
                         st.session_state.wf_download_name = f"WF_PARAMETERS_{wf_topic}.XML"
                         st.success(f"✅ XML נוצר בהצלחה! שם הקובץ: WF_PARAMETERS_{wf_topic}.XML")
+                    except Exception as e:
+                        st.error(f"❌ שגיאה: {str(e)}")
+        elif "WF DELTA" in delta_stage:
+            if not wf_delta_topic:
+                st.error("❌ אנא הזן נושא עסקי לשם ה-WF")
+            elif not wf_delta_file_name:
+                st.error("❌ אנא הזן שם קובץ פרמטרים")
+            else:
+                with st.spinner("⏳ מעבד..."):
+                    try:
+                        xml_content = generate_wf_delta(
+                            topic=wf_delta_topic,
+                            file_name=wf_delta_file_name,
+                            folder_name=wf_delta_folder
+                        )
+                        st.session_state.xml_content = xml_content
+                        st.session_state.is_ddl_output = False
+                        st.session_state.wf_download_name = f"WF_DELTA_{wf_delta_topic}.XML"
+                        st.success(f"✅ XML נוצר בהצלחה! שם הקובץ: WF_DELTA_{wf_delta_topic}.XML")
                     except Exception as e:
                         st.error(f"❌ שגיאה: {str(e)}")
         elif not ddl_input.strip():
