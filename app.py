@@ -968,10 +968,92 @@ def get_wf_parameters_template():
             <VALUEPAIR EXECORDER ="3" NAME ="$$PARAMETER_CODES" REVERSEASSIGNMENT ="NO" VALUE ="&apos;__PARAM_CODE__&apos;"/>
         </TASK>
         <TASK DESCRIPTION ="" NAME ="Start" REUSABLE ="NO" TYPE ="Start" VERSIONNUMBER ="2"/>
+        <SESSION DESCRIPTION ="" ISVALID ="YES" MAPPINGNAME ="m_param_calc_TRANSACTION_ID" NAME ="s_m_param_calc_TRANSACTION_ID" REUSABLE ="NO" SORTORDER ="Binary" VERSIONNUMBER ="2">
+            <SESSTRANSFORMATIONINST ISREPARTITIONPOINT ="YES" PARTITIONTYPE ="PASS THROUGH" PIPELINE ="2" SINSTANCENAME ="FLAT_FILE" STAGE ="1" TRANSFORMATIONNAME ="FLAT_FILE" TRANSFORMATIONTYPE ="Target Definition">
+                <FLATFILE CODEPAGE ="MS1255" CONSECDELIMITERSASONE ="NO" DELIMITED ="YES" DELIMITERS ="," ESCAPE_CHARACTER ="" KEEPESCAPECHAR ="NO" LINESEQUENTIAL ="NO" MULTIDELIMITERSASAND ="NO" NULLCHARTYPE ="ASCII" NULL_CHARACTER ="*" PADBYTES ="1" QUOTE_CHARACTER ="NONE" REPEATABLE ="NO" ROWDELIMITER ="0" SKIPROWS ="0" STRIPTRAILINGBLANKS ="NO"/>
+            </SESSTRANSFORMATIONINST>
+            <CONFIGREFERENCE REFOBJECTNAME ="default_session_config" TYPE ="Session config">
+                <ATTRIBUTE NAME ="Maximum Memory Allowed For Auto Memory Attributes" VALUE ="512MB"/>
+                <ATTRIBUTE NAME ="Save session log for these runs" VALUE ="3"/>
+            </CONFIGREFERENCE>
+            <SESSIONEXTENSION NAME ="File Writer" SINSTANCENAME ="FLAT_FILE" SUBTYPE ="File Writer" TRANSFORMATIONTYPE ="Target Definition" TYPE ="WRITER">
+                <CONNECTIONREFERENCE CNXREFNAME ="Connection" CONNECTIONNAME ="" CONNECTIONNUMBER ="1" CONNECTIONSUBTYPE ="" CONNECTIONTYPE ="" VARIABLE =""/>
+                <ATTRIBUTE NAME ="Merge Type" VALUE ="No Merge"/>
+                <ATTRIBUTE NAME ="Merge File Directory" VALUE ="$PMTargetFileDir&#x5c;"/>
+                <ATTRIBUTE NAME ="Output file directory" VALUE ="$PMTargetFileDir&#x5c;"/>
+                <ATTRIBUTE NAME ="Output filename" VALUE ="flat_file1.out"/>
+            </SESSIONEXTENSION>
+            <ATTRIBUTE NAME ="General Options" VALUE =""/>
+            <ATTRIBUTE NAME ="Write Backward Compatible Session Log File" VALUE ="NO"/>
+            <ATTRIBUTE NAME ="Session Log File Name" VALUE ="s_m_param_calc_TRANSACTION_ID.log"/>
+            <ATTRIBUTE NAME ="Session Log File directory" VALUE ="$PMSessionLogDir&#x5c;"/>
+            <ATTRIBUTE NAME ="Parameter Filename" VALUE =""/>
+            <ATTRIBUTE NAME ="Enable Test Load" VALUE ="NO"/>
+            <ATTRIBUTE NAME ="Treat source rows as" VALUE ="Insert"/>
+            <ATTRIBUTE NAME ="Commit Type" VALUE ="Target"/>
+            <ATTRIBUTE NAME ="Commit Interval" VALUE ="10000"/>
+            <ATTRIBUTE NAME ="Commit On End Of File" VALUE ="YES"/>
+            <ATTRIBUTE NAME ="Rollback Transactions on Errors" VALUE ="NO"/>
+            <ATTRIBUTE NAME ="Recovery Strategy" VALUE ="Fail task and continue workflow"/>
+        </SESSION>
+        <SESSION DESCRIPTION ="" ISVALID ="YES" MAPPINGNAME ="Shortcut_to_m_Parameter_File" NAME ="s_Shortcut_to_m_Parameter_File" REUSABLE ="NO" SORTORDER ="Binary" VERSIONNUMBER ="2">
+            <SESSTRANSFORMATIONINST ISREPARTITIONPOINT ="YES" PARTITIONTYPE ="PASS THROUGH" PIPELINE ="1" SINSTANCENAME ="FLAT_FILE" STAGE ="1" TRANSFORMATIONNAME ="FLAT_FILE" TRANSFORMATIONTYPE ="Target Definition">
+                <FLATFILE CODEPAGE ="MS1255" CONSECDELIMITERSASONE ="NO" DELIMITED ="YES" DELIMITERS ="," ESCAPE_CHARACTER ="" KEEPESCAPECHAR ="NO" LINESEQUENTIAL ="NO" MULTIDELIMITERSASAND ="NO" NULLCHARTYPE ="ASCII" NULL_CHARACTER ="*" PADBYTES ="1" QUOTE_CHARACTER ="NONE" REPEATABLE ="NO" ROWDELIMITER ="0" SKIPROWS ="0" STRIPTRAILINGBLANKS ="NO"/>
+            </SESSTRANSFORMATIONINST>
+            <CONFIGREFERENCE REFOBJECTNAME ="default_session_config" TYPE ="Session config">
+                <ATTRIBUTE NAME ="Maximum Memory Allowed For Auto Memory Attributes" VALUE ="512MB"/>
+                <ATTRIBUTE NAME ="Maximum Percentage of Total Memory Allowed For Auto Memory Attributes" VALUE ="5"/>
+                <ATTRIBUTE NAME ="Save session log for these runs" VALUE ="3"/>
+            </CONFIGREFERENCE>
+            <SESSIONCOMPONENT REFOBJECTNAME ="presession_variable_assignment" REUSABLE ="NO" TYPE ="Pre-session variable assignment">
+                <TASK DESCRIPTION ="" NAME ="presession_variable_assignment" REUSABLE ="NO" TYPE ="Command" VERSIONNUMBER ="2">
+                    <ATTRIBUTE NAME ="Fail task if any command fails" VALUE ="NO"/>
+                    <ATTRIBUTE NAME ="Recovery Strategy" VALUE ="Fail task and continue workflow"/>
+                </TASK>
+                <VALUEPAIR EXECORDER ="1" NAME ="$$m_PARAMETER_CODES" REVERSEASSIGNMENT ="NO" VALUE ="$$PARAMETER_CODES"/>
+            </SESSIONCOMPONENT>
+            <SESSIONEXTENSION NAME ="File Writer" SINSTANCENAME ="FLAT_FILE" SUBTYPE ="File Writer" TRANSFORMATIONTYPE ="Target Definition" TYPE ="WRITER">
+                <CONNECTIONREFERENCE CNXREFNAME ="Connection" CONNECTIONNAME ="" CONNECTIONNUMBER ="1" CONNECTIONSUBTYPE ="" CONNECTIONTYPE ="" VARIABLE =""/>
+                <ATTRIBUTE NAME ="Merge Type" VALUE ="No Merge"/>
+                <ATTRIBUTE NAME ="Merge File Directory" VALUE ="$PMTargetFileDir&#x5c;"/>
+                <ATTRIBUTE NAME ="Output file directory" VALUE ="$PMRootDir&#x5c;ParamFiles&#x5c;"/>
+                <ATTRIBUTE NAME ="Output filename" VALUE ="$$wf_PARAMETER_FILE_NAME"/>
+            </SESSIONEXTENSION>
+            <SESSIONEXTENSION NAME ="Relational Reader" SINSTANCENAME ="SQ_ETL_PARAMETERS_HEADERS" SUBTYPE ="Relational Reader" TRANSFORMATIONTYPE ="Source Qualifier" TYPE ="READER">
+                <CONNECTIONREFERENCE CNXREFNAME ="DB Connection" CONNECTIONNAME ="DW_Management" CONNECTIONNUMBER ="1" CONNECTIONSUBTYPE ="Microsoft SQL Server" CONNECTIONTYPE ="Relational" VARIABLE =""/>
+            </SESSIONEXTENSION>
+            <ATTRIBUTE NAME ="General Options" VALUE =""/>
+            <ATTRIBUTE NAME ="Write Backward Compatible Session Log File" VALUE ="NO"/>
+            <ATTRIBUTE NAME ="Session Log File Name" VALUE ="s_Shortcut_to_m_Parameter_File.log"/>
+            <ATTRIBUTE NAME ="Session Log File directory" VALUE ="$PMSessionLogDir&#x5c;"/>
+            <ATTRIBUTE NAME ="Parameter Filename" VALUE =""/>
+            <ATTRIBUTE NAME ="Enable Test Load" VALUE ="NO"/>
+            <ATTRIBUTE NAME ="Treat source rows as" VALUE ="Insert"/>
+            <ATTRIBUTE NAME ="Commit Type" VALUE ="Target"/>
+            <ATTRIBUTE NAME ="Commit Interval" VALUE ="10000"/>
+            <ATTRIBUTE NAME ="Commit On End Of File" VALUE ="YES"/>
+            <ATTRIBUTE NAME ="Rollback Transactions on Errors" VALUE ="NO"/>
+            <ATTRIBUTE NAME ="Recovery Strategy" VALUE ="Fail task and continue workflow"/>
+        </SESSION>
+        <TASKINSTANCE DESCRIPTION ="" FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN ="NO" FAIL_PARENT_IF_INSTANCE_FAILS ="YES" ISENABLED ="YES" NAME ="s_m_param_calc_TRANSACTION_ID" REUSABLE ="NO" TASKNAME ="s_m_param_calc_TRANSACTION_ID" TASKTYPE ="Session" TREAT_INPUTLINK_AS_AND ="YES"/>
         <TASKINSTANCE DESCRIPTION ="" FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN ="NO" FAIL_PARENT_IF_INSTANCE_FAILS ="YES" ISENABLED ="YES" NAME ="Assignment" REUSABLE ="NO" TASKNAME ="Assignment" TASKTYPE ="Assignment" TREAT_INPUTLINK_AS_AND ="YES"/>
         <TASKINSTANCE DESCRIPTION ="" ISENABLED ="YES" NAME ="Start" REUSABLE ="NO" TASKNAME ="Start" TASKTYPE ="Start"/>
+        <TASKINSTANCE DESCRIPTION ="" FAIL_PARENT_IF_INSTANCE_DID_NOT_RUN ="NO" FAIL_PARENT_IF_INSTANCE_FAILS ="YES" ISENABLED ="YES" NAME ="s_Shortcut_to_m_Parameter_File" REUSABLE ="NO" TASKNAME ="s_Shortcut_to_m_Parameter_File" TASKTYPE ="Session" TREAT_INPUTLINK_AS_AND ="YES"/>
+        <WORKFLOWLINK CONDITION ="$Assignment.Status=SUCCEEDED" FROMTASK ="Assignment" TOTASK ="s_m_param_calc_TRANSACTION_ID"/>
         <WORKFLOWLINK CONDITION ="" FROMTASK ="Start" TOTASK ="Assignment"/>
-        <WORKFLOWVARIABLE DATATYPE ="nstring" DEFAULTVALUE ="" DESCRIPTION ="" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$$WF_PARAMETER_FILE_NAME" USERDEFINED ="YES"/>
+        <WORKFLOWLINK CONDITION ="$s_m_param_calc_TRANSACTION_ID.Status=SUCCEEDED" FROMTASK ="s_m_param_calc_TRANSACTION_ID" TOTASK ="s_Shortcut_to_m_Parameter_File"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task started" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$s_m_param_calc_TRANSACTION_ID.StartTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task completed" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$s_m_param_calc_TRANSACTION_ID.EndTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="Status of this task&apos;s execution" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$s_m_param_calc_TRANSACTION_ID.Status" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="Status of the previous task that is not disabled" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$s_m_param_calc_TRANSACTION_ID.PrevTaskStatus" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task started" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Assignment.StartTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task completed" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Assignment.EndTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="Status of this task&apos;s execution" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Assignment.Status" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task started" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.StartTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task completed" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$Start.EndTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task started" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$s_Shortcut_to_m_Parameter_File.StartTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="date/time" DEFAULTVALUE ="" DESCRIPTION ="The time this task completed" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$s_Shortcut_to_m_Parameter_File.EndTime" USERDEFINED ="NO"/>
+        <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="Status of this task&apos;s execution" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$s_Shortcut_to_m_Parameter_File.Status" USERDEFINED ="NO"/>
         <WORKFLOWVARIABLE DATATYPE ="integer" DEFAULTVALUE ="" DESCRIPTION ="" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$$PARAM_CODE" USERDEFINED ="YES"/>
         <WORKFLOWVARIABLE DATATYPE ="nstring" DEFAULTVALUE ="" DESCRIPTION ="" ISNULL ="NO" ISPERSISTENT ="NO" NAME ="$$PARAMETER_CODES" USERDEFINED ="YES"/>
         <ATTRIBUTE NAME ="Parameter Filename" VALUE ="$PMRootDir&#x5c;ParamFiles&#x5c;__FILE_NAME__.par"/>
