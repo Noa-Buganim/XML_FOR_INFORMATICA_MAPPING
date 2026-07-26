@@ -516,7 +516,7 @@ def generate_delta_010(ddl_text, folder_name="DW_Drugs"):
     }
     
     table_name, cols = delta_010_parse_ddl(ddl_text)
-    src1_name = table_name + "_STG"
+    src1_name = table_name  # Keep original name without _STG suffix
     src2_name = table_name + "_KEY_STG"
     
     # SOURCE1 FIELDS
@@ -1459,6 +1459,21 @@ def generate_ddl_delta_tables(ddl_text):
 # STREAMLIT UI
 # =====================================================================
 
+def extract_table_name(ddl_text):
+    """
+    Extract the table name from a CREATE TABLE DDL statement.
+    Returns the table name in uppercase, or None if not found.
+    """
+    tbl_match = re.search(r'CREATE\s+TABLE\s+(?:\[?\w+\]?\.)?\[?(\w+)\]?', ddl_text, re.IGNORECASE)
+    if tbl_match:
+        return tbl_match.group(1).upper()
+    return None
+
+
+# =====================================================================
+# MAIN APPLICATION
+# =====================================================================
+
 def main():
     st.set_page_config(page_title="Informatica XML Generator", layout="wide")
     
@@ -1663,12 +1678,20 @@ def main():
                         st.session_state.is_ddl_output = False
                         if "DELTA 000" in delta_stage:
                             xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
+                            table_name = extract_table_name(ddl_input) or "MASTER"
+                            st.session_state.wf_download_name = f"DELTA_000_{table_name}_KEY_STG.XML"
                         elif "DELTA 010" in delta_stage:
                             xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
+                            table_name = extract_table_name(ddl_input) or "MASTER"
+                            st.session_state.wf_download_name = f"DELTA_010_{table_name}_STG.XML"
                         elif "DELTA 020" in delta_stage:
                             xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
+                            table_name = extract_table_name(ddl_input) or "MASTER"
+                            st.session_state.wf_download_name = f"DELTA_020_{table_name}_CLN.XML"
                         else:
                             xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
+                            detail_table_name = extract_table_name(ddl_detail_input) or "DETAIL"
+                            st.session_state.wf_download_name = f"DELTA_030_{detail_table_name}_CLN.XML"
                         st.session_state.xml_content = xml_content
                         st.success("✅ XML נוצר בהצלחה!")
                 except Exception as e:
