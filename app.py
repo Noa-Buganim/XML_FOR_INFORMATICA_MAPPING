@@ -1583,8 +1583,8 @@ def main():
     wf_param_code = ""
     wf_delta_topic = ""
     wf_delta_file_name = ""
-    wf_delta_folder = "DW_Drugs"
-    folder_name = "DW_Drugs"
+    wf_delta_folder = ""
+    folder_name = ""
 
     if delta_stage == "WF PARAMETERS":
         st.markdown("### יצירת XML לוורקפלואו WF_PARAMETERS")
