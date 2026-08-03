@@ -1480,6 +1480,8 @@ def main():
         """
         <style>
         .stApp {
+            direction: rtl;
+            text-align: right;
             background:
                 radial-gradient(1200px 500px at 10% -10%, #e7edf7 0%, transparent 60%),
                 radial-gradient(900px 400px at 100% 0%, #edf1f6 0%, transparent 55%),
@@ -1490,14 +1492,21 @@ def main():
             padding-top: 1.2rem;
             padding-bottom: 2rem;
         }
-        h1, h2, h3 {
-            text-align: right;
-            direction: rtl;
+
+        h1, h2, h3, p, label, .stMarkdown, [data-testid="stMarkdownContainer"] {
+            text-align: right !important;
+            direction: rtl !important;
             color: #243447;
         }
-        [data-testid="stMarkdownContainer"] p {
-            color: #3b4a5a;
+
+        .stTextInput label p,
+        .stTextArea label p,
+        .stRadio > label p,
+        .stSelectbox > label p {
+            font-weight: 700 !important;
+            color: #21364f !important;
         }
+
         div[data-baseweb="radio"] label {
             background: #eef3fb;
             border: 1px solid #c9d6ea;
@@ -1506,18 +1515,21 @@ def main():
             margin-bottom: 6px;
             display: inline-block;
         }
+
         div[data-baseweb="input"] > div,
         textarea {
             border-radius: 12px !important;
             border: 1px solid #c6d3e7 !important;
         }
+
         .stButton > button {
             border-radius: 12px !important;
             border: 1px solid #6887b2 !important;
             background: linear-gradient(180deg, #6e8fbf 0%, #5d7da8 100%) !important;
             color: white !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
         }
+
         .stButton > button:hover {
             border-color: #4f6d96 !important;
             filter: brightness(0.98);
@@ -1528,31 +1540,37 @@ def main():
     )
 
     st.title("Informatica PowerCenter XML Generator")
-    st.markdown("<h2>יוצר XML עבור שלבי Delta, Workflows ו-DDL</h2>", unsafe_allow_html=True)
+    st.markdown("<h2><b>יוצר XML עבור שלבי Delta, Workflows ו-DDL</b></h2>", unsafe_allow_html=True)
     st.markdown("---")
 
+    st.markdown("### **בחר קטגוריה**")
     section = st.radio(
-        "בחר קטגוריה:",
+        "",
         ["DELTA", "WORKFLOW", "DDL"],
-        horizontal=True
+        horizontal=True,
+        label_visibility="collapsed"
     )
 
     if section == "DELTA":
+        st.markdown("### **בחר את שלב ה-DELTA**")
         delta_stage = st.radio(
-            "בחר את שלב ה-DELTA:",
+            "",
             [
                 "DELTA 000 - Master Key STG",
                 "DELTA 010 - Master STG",
                 "DELTA 020 - Master CLN",
                 "DELTA 030 - Communication Detail CLN",
             ],
-            index=0
+            index=0,
+            label_visibility="collapsed"
         )
     elif section == "WORKFLOW":
+        st.markdown("### **בחר סוג Workflow**")
         delta_stage = st.radio(
-            "בחר סוג Workflow:",
+            "",
             ["WF PARAMETERS", "WF DELTA"],
-            index=0
+            index=0,
+            label_visibility="collapsed"
         )
     else:
         delta_stage = "GENERATE DDL DELTA TABLES"
