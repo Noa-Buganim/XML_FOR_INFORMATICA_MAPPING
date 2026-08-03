@@ -1559,7 +1559,7 @@ def main():
                 "DELTA 000 - Master Key STG",
                 "DELTA 010 - Master STG",
                 "DELTA 020 - Master CLN",
-                "DELTA 030 - Communication Detail CLN",
+                "DELTA 030 - Detail CLN",
             ],
             index=0,
             label_visibility="collapsed"
