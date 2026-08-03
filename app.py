@@ -1473,8 +1473,10 @@ def extract_table_name(ddl_text):
 # =====================================================================
 # MAIN APPLICATION
 # =====================================================================
-st.markdown(
-    """
+def main():
+    st.set_page_config(page_title="Informatica XML Generator", layout="wide")
+    st.markdown(
+        """
     <style>
     .stApp {
         background:
