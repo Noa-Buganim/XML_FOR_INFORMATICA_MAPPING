@@ -1475,341 +1475,352 @@ def extract_table_name(ddl_text):
 # =====================================================================
 def main():
     st.set_page_config(page_title="Informatica XML Generator", layout="wide")
+
     st.markdown(
         """
-    <style>
-    .stApp {
-        background:
-            radial-gradient(1200px 500px at 10% -10%, #e7f3ef 0%, transparent 60%),
-            radial-gradient(900px 400px at 100% 0%, #f1efe9 0%, transparent 55%),
-            #f6f8f7;
-    }
-    .block-container {
-        max-width: 96vw;
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
-    }
-    h1, h2, h3 {
-        text-align: right;
-        direction: rtl;
-        color: #1f3b35;
-    }
-    [data-testid="stMarkdownContainer"] p {
-        color: #2f4f48;
-    }
-    div[data-baseweb="select"] > div,
-    div[data-baseweb="input"] > div,
-    textarea {
-        border-radius: 12px !important;
-    }
-    .stButton > button {
-        border-radius: 12px !important;
-        border: 1px solid #84a59a !important;
-        background: linear-gradient(180deg, #7faea0 0%, #6f9b8f 100%) !important;
-        color: white !important;
-        font-weight: 600 !important;
-    }
-    .stButton > button:hover {
-        border-color: #5f877c !important;
-        filter: brightness(0.98);
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.title("Informatica PowerCenter XML Generator")
-st.markdown("<h2>יוצר XML עבור שלבי Delta, Workflows ו-DDL</h2>", unsafe_allow_html=True)
-st.markdown("---")
-
-section = st.radio(
-    "בחר קטגוריה:",
-    ["DELTA", "WORKFLOW", "DDL"],
-    horizontal=True
-)
-
-if section == "DELTA":
-    delta_stage = st.selectbox(
-        "בחר את שלב ה-DELTA:",
-        [
-            "DELTA 000 - Master Key STG",
-            "DELTA 010 - Master STG",
-            "DELTA 020 - Master CLN",
-            "DELTA 030 - Communication Detail CLN",
-        ],
-        index=0,
+        <style>
+        .stApp {
+            background:
+                radial-gradient(1200px 500px at 10% -10%, #e7edf7 0%, transparent 60%),
+                radial-gradient(900px 400px at 100% 0%, #edf1f6 0%, transparent 55%),
+                #f5f7fb;
+        }
+        .block-container {
+            max-width: 96vw;
+            padding-top: 1.2rem;
+            padding-bottom: 2rem;
+        }
+        h1, h2, h3 {
+            text-align: right;
+            direction: rtl;
+            color: #243447;
+        }
+        [data-testid="stMarkdownContainer"] p {
+            color: #3b4a5a;
+        }
+        div[data-baseweb="radio"] label {
+            background: #eef3fb;
+            border: 1px solid #c9d6ea;
+            border-radius: 10px;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            display: inline-block;
+        }
+        div[data-baseweb="input"] > div,
+        textarea {
+            border-radius: 12px !important;
+            border: 1px solid #c6d3e7 !important;
+        }
+        .stButton > button {
+            border-radius: 12px !important;
+            border: 1px solid #6887b2 !important;
+            background: linear-gradient(180deg, #6e8fbf 0%, #5d7da8 100%) !important;
+            color: white !important;
+            font-weight: 600 !important;
+        }
+        .stButton > button:hover {
+            border-color: #4f6d96 !important;
+            filter: brightness(0.98);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
     )
-elif section == "WORKFLOW":
-    delta_stage = st.selectbox(
-        "בחר סוג Workflow:",
-        ["WF PARAMETERS", "WF DELTA"],
-        index=0,
+
+    st.title("Informatica PowerCenter XML Generator")
+    st.markdown("<h2>יוצר XML עבור שלבי Delta, Workflows ו-DDL</h2>", unsafe_allow_html=True)
+    st.markdown("---")
+
+    section = st.radio(
+        "בחר קטגוריה:",
+        ["DELTA", "WORKFLOW", "DDL"],
+        horizontal=True
     )
-else:
-    delta_stage = "GENERATE DDL DELTA TABLES"
 
-ddl_input = ""
-ddl_master_input = None
-ddl_detail_input = None
-wf_topic = ""
-wf_file_name = ""
-wf_param_code = ""
-wf_delta_topic = ""
-wf_delta_file_name = ""
-wf_delta_folder = "DW_Drugs"
-folder_name = "DW_Drugs"
+    if section == "DELTA":
+        delta_stage = st.radio(
+            "בחר את שלב ה-DELTA:",
+            [
+                "DELTA 000 - Master Key STG",
+                "DELTA 010 - Master STG",
+                "DELTA 020 - Master CLN",
+                "DELTA 030 - Communication Detail CLN",
+            ],
+            index=0
+        )
+    elif section == "WORKFLOW":
+        delta_stage = st.radio(
+            "בחר סוג Workflow:",
+            ["WF PARAMETERS", "WF DELTA"],
+            index=0
+        )
+    else:
+        delta_stage = "GENERATE DDL DELTA TABLES"
 
-if delta_stage == "WF PARAMETERS":
-    st.markdown("### יצירת XML לוורקפלואו WF_PARAMETERS")
-    st.info("הזן את הפרטים ליצירת ה-Workflow. שם ה-WF ייווצר אוטומטית בתבנית: WF_PARAMETERS_<נושא>.")
+    ddl_input = ""
+    ddl_master_input = None
+    ddl_detail_input = None
+    wf_topic = ""
+    wf_file_name = ""
+    wf_param_code = ""
+    wf_delta_topic = ""
+    wf_delta_file_name = ""
+    wf_delta_folder = "DW_Drugs"
+    folder_name = "DW_Drugs"
 
-    col_wf1, col_wf2 = st.columns(2)
-    with col_wf1:
-        wf_topic = st.text_input(
-            "נושא עסקי (לשם ה-WF):",
-            placeholder="לדוגמא: ISSUE_DRUG",
-            key="wf_topic"
-        ).strip().upper()
-        wf_file_name = st.text_input(
-            "שם קובץ הפרמטרים (ללא סיומת .par):",
-            placeholder="לדוגמא: KFK_ISSUED_DRUG",
-            key="wf_file_name"
-        ).strip().upper()
+    if delta_stage == "WF PARAMETERS":
+        st.markdown("### יצירת XML לוורקפלואו WF_PARAMETERS")
+        st.info("הזן את הפרטים ליצירת ה-Workflow. שם ה-WF ייווצר אוטומטית בתבנית: WF_PARAMETERS_<נושא>.")
 
-    with col_wf2:
-        wf_param_code = st.text_input(
-            "קוד פרמטר ($$PARAM_CODE):",
-            placeholder="לדוגמא: 230",
-            key="wf_param_code"
-        ).strip()
+        col_wf1, col_wf2 = st.columns(2)
+        with col_wf1:
+            wf_topic = st.text_input(
+                "נושא עסקי (לשם ה-WF):",
+                placeholder="לדוגמא: ISSUE_DRUG",
+                key="wf_topic"
+            ).strip().upper()
+            wf_file_name = st.text_input(
+                "שם קובץ הפרמטרים (ללא סיומת .par):",
+                placeholder="לדוגמא: KFK_ISSUED_DRUG",
+                key="wf_file_name"
+            ).strip().upper()
+
+        with col_wf2:
+            wf_param_code = st.text_input(
+                "קוד פרמטר ($$PARAM_CODE):",
+                placeholder="לדוגמא: 230",
+                key="wf_param_code"
+            ).strip()
+            folder_name = st.text_input(
+                "שם FOLDER באינפורמטיקה:",
+                value="DW_Drugs",
+                key="folder_name_input_wf_params"
+            ).strip() or "DW_Drugs"
+
+            if wf_topic:
+                st.info(f"שם ה-WF שייווצר: WF_PARAMETERS_{wf_topic}")
+
+    elif delta_stage == "WF DELTA":
+        st.markdown("### יצירת XML לוורקפלואו WF_DELTA")
+        st.info("הזן את הפרטים ליצירת ה-Workflow. שם ה-WF ייווצר אוטומטית בתבנית: WF_DELTA_<נושא>.")
+
+        col_wf1, col_wf2 = st.columns(2)
+        with col_wf1:
+            wf_delta_topic = st.text_input(
+                "נושא עסקי (לשם ה-WF):",
+                placeholder="לדוגמא: ISSUE_DRUG",
+                key="wf_delta_topic"
+            ).strip().upper()
+            wf_delta_file_name = st.text_input(
+                "שם קובץ הפרמטרים (ללא סיומת .par):",
+                placeholder="לדוגמא: KFK_ISSUED_DRUG",
+                key="wf_delta_file_name"
+            ).strip().upper()
+
+        with col_wf2:
+            wf_delta_folder = st.text_input(
+                "שם FOLDER באינפורמטיקה:",
+                value="DW_Drugs",
+                key="wf_delta_folder"
+            ).strip() or "DW_Drugs"
+
+            if wf_delta_topic:
+                st.info(f"שם ה-WF שייווצר: WF_DELTA_{wf_delta_topic}")
+
+        folder_name = wf_delta_folder
+
+    elif delta_stage == "GENERATE DDL DELTA TABLES":
+        st.markdown("### יצירת סקריפט DDL לטבלאות DELTA")
+        st.info("טבלאות שמסתיימות ב-_MASTER יניבו: _KEY_STG, _STG, _CLN. טבלאות שמסתיימות ב-_DETAIL יניבו: _CLN.")
+        ddl_input = st.text_area(
+            "הדבק DDL:",
+            height=260,
+            placeholder="CREATE TABLE [schema].[table] (...)",
+            key="ddl_input_ddl_mode"
+        )
+
+    elif "DELTA 030" in delta_stage:
+        st.markdown("### הזן שתי טבלאות DDL: MASTER ו-DETAIL")
+        st.info("הזן MASTER משמאל ו-DETAIL מימין.")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### טבלה MASTER")
+            ddl_master_input = st.text_area(
+                "הדבק DDL של MASTER:",
+                height=260,
+                placeholder="CREATE TABLE [schema].[table_master] (...)",
+                key="ddl_master_input"
+            )
+        with col2:
+            st.markdown("#### טבלה DETAIL")
+            ddl_detail_input = st.text_area(
+                "הדבק DDL של DETAIL:",
+                height=260,
+                placeholder="CREATE TABLE [schema].[table_detail] (...)",
+                key="ddl_detail_input"
+            )
+
+        ddl_input = f"{ddl_master_input or ''}\n\n{ddl_detail_input or ''}"
         folder_name = st.text_input(
             "שם FOLDER באינפורמטיקה:",
             value="DW_Drugs",
-            key="folder_name_input_wf_params"
+            key="folder_name_input_delta_030"
         ).strip() or "DW_Drugs"
 
-        if wf_topic:
-            st.info(f"שם ה-WF שייווצר: WF_PARAMETERS_{wf_topic}")
-
-elif delta_stage == "WF DELTA":
-    st.markdown("### יצירת XML לוורקפלואו WF_DELTA")
-    st.info("הזן את הפרטים ליצירת ה-Workflow. שם ה-WF ייווצר אוטומטית בתבנית: WF_DELTA_<נושא>.")
-
-    col_wf1, col_wf2 = st.columns(2)
-    with col_wf1:
-        wf_delta_topic = st.text_input(
-            "נושא עסקי (לשם ה-WF):",
-            placeholder="לדוגמא: ISSUE_DRUG",
-            key="wf_delta_topic"
-        ).strip().upper()
-        wf_delta_file_name = st.text_input(
-            "שם קובץ הפרמטרים (ללא סיומת .par):",
-            placeholder="לדוגמא: KFK_ISSUED_DRUG",
-            key="wf_delta_file_name"
-        ).strip().upper()
-
-    with col_wf2:
-        wf_delta_folder = st.text_input(
+    else:
+        st.markdown("### הזן CREATE TABLE DDL")
+        ddl_input = st.text_area(
+            "הדבק DDL:",
+            height=260,
+            placeholder="CREATE TABLE [schema].[table] (...)",
+            key="ddl_input_delta_single"
+        )
+        folder_name = st.text_input(
             "שם FOLDER באינפורמטיקה:",
             value="DW_Drugs",
-            key="wf_delta_folder"
+            key="folder_name_input_delta_generic"
         ).strip() or "DW_Drugs"
 
-        if wf_delta_topic:
-            st.info(f"שם ה-WF שייווצר: WF_DELTA_{wf_delta_topic}")
-
-    folder_name = wf_delta_folder
-
-elif delta_stage == "GENERATE DDL DELTA TABLES":
-    st.markdown("### יצירת סקריפט DDL לטבלאות DELTA")
-    st.info("טבלאות שמסתיימות ב-_MASTER יניבו: _KEY_STG, _STG, _CLN. טבלאות שמסתיימות ב-_DETAIL יניבו: _CLN.")
-    ddl_input = st.text_area(
-        "הדבק DDL:",
-        height=260,
-        placeholder="CREATE TABLE [schema].[table] (...)",
-        key="ddl_input_ddl_mode"
-    )
-
-elif "DELTA 030" in delta_stage:
-    st.markdown("### הזן שתי טבלאות DDL: MASTER ו-DETAIL")
-    st.info("הזן MASTER משמאל ו-DETAIL מימין.")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### טבלה MASTER")
-        ddl_master_input = st.text_area(
-            "הדבק DDL של MASTER:",
-            height=260,
-            placeholder="CREATE TABLE [schema].[table_master] (...)",
-            key="ddl_master_input"
-        )
-    with col2:
-        st.markdown("#### טבלה DETAIL")
-        ddl_detail_input = st.text_area(
-            "הדבק DDL של DETAIL:",
-            height=260,
-            placeholder="CREATE TABLE [schema].[table_detail] (...)",
-            key="ddl_detail_input"
-        )
-
-    ddl_input = f"{ddl_master_input or ''}\n\n{ddl_detail_input or ''}"
-    folder_name = st.text_input(
-        "שם FOLDER באינפורמטיקה:",
-        value="DW_Drugs",
-        key="folder_name_input_delta_030"
-    ).strip() or "DW_Drugs"
-
-else:
-    st.markdown("### הזן CREATE TABLE DDL")
-    ddl_input = st.text_area(
-        "הדבק DDL:",
-        height=260,
-        placeholder="CREATE TABLE [schema].[table] (...)",
-        key="ddl_input_delta_single"
-    )
-    folder_name = st.text_input(
-        "שם FOLDER באינפורמטיקה:",
-        value="DW_Drugs",
-        key="folder_name_input_delta_generic"
-    ).strip() or "DW_Drugs"
-
-st.markdown("---")
-
-if delta_stage == "WF PARAMETERS":
-    btn_label = "ייצר WF PARAMETERS XML"
-elif delta_stage == "WF DELTA":
-    btn_label = "ייצר WF DELTA XML"
-elif delta_stage == "GENERATE DDL DELTA TABLES":
-    btn_label = "ייצר DDL"
-else:
-    btn_label = "ייצר XML"
-
-if st.button(btn_label, use_container_width=True, type="primary"):
-    if delta_stage == "WF PARAMETERS":
-        if not wf_topic:
-            st.error("אנא הזן נושא עסקי לשם ה-WF")
-        elif not wf_file_name:
-            st.error("אנא הזן שם קובץ פרמטרים")
-        elif not wf_param_code:
-            st.error("אנא הזן קוד פרמטר")
-        else:
-            with st.spinner("מעבד..."):
-                try:
-                    xml_content = generate_wf_parameters(
-                        topic=wf_topic,
-                        file_name=wf_file_name,
-                        param_code=wf_param_code,
-                        folder_name=folder_name
-                    )
-                    st.session_state.xml_content = xml_content
-                    st.session_state.is_ddl_output = False
-                    st.session_state.wf_download_name = f"WF_PARAMETERS_{wf_topic}.XML"
-                    st.success(f"XML נוצר בהצלחה: WF_PARAMETERS_{wf_topic}.XML")
-                except Exception as e:
-                    st.error(f"שגיאה: {str(e)}")
-
-    elif delta_stage == "WF DELTA":
-        if not wf_delta_topic:
-            st.error("אנא הזן נושא עסקי לשם ה-WF")
-        elif not wf_delta_file_name:
-            st.error("אנא הזן שם קובץ פרמטרים")
-        else:
-            with st.spinner("מעבד..."):
-                try:
-                    xml_content = generate_wf_delta(
-                        topic=wf_delta_topic,
-                        file_name=wf_delta_file_name,
-                        folder_name=wf_delta_folder
-                    )
-                    st.session_state.xml_content = xml_content
-                    st.session_state.is_ddl_output = False
-                    st.session_state.wf_download_name = f"WF_DELTA_{wf_delta_topic}.XML"
-                    st.success(f"XML נוצר בהצלחה: WF_DELTA_{wf_delta_topic}.XML")
-                except Exception as e:
-                    st.error(f"שגיאה: {str(e)}")
-
-    elif delta_stage == "GENERATE DDL DELTA TABLES":
-        if not ddl_input.strip():
-            st.error("אנא הדבק DDL")
-        else:
-            with st.spinner("מעבד..."):
-                try:
-                    result_content = generate_ddl_delta_tables(ddl_input)
-                    st.session_state.xml_content = result_content
-                    st.session_state.is_ddl_output = True
-                    st.session_state.wf_download_name = "delta_tables.sql"
-                    st.success("סקריפט DDL נוצר בהצלחה")
-                except Exception as e:
-                    st.error(f"שגיאה: {str(e)}")
-
-    else:
-        if not ddl_input.strip():
-            st.error("אנא הדבק DDL")
-        elif "DELTA 030" in delta_stage and (
-            not ddl_master_input or not ddl_master_input.strip() or
-            not ddl_detail_input or not ddl_detail_input.strip()
-        ):
-            st.error("אנא הדבק שתי טבלאות: MASTER ו-DETAIL")
-        else:
-            with st.spinner("מעבד..."):
-                try:
-                    st.session_state.is_ddl_output = False
-
-                    if "DELTA 000" in delta_stage:
-                        xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
-                        table_name = extract_table_name(ddl_input) or "MASTER"
-                        st.session_state.wf_download_name = f"DELTA_000_{table_name}_KEY_STG.XML"
-
-                    elif "DELTA 010" in delta_stage:
-                        xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
-                        table_name = extract_table_name(ddl_input) or "MASTER"
-                        st.session_state.wf_download_name = f"DELTA_010_{table_name}_STG.XML"
-
-                    elif "DELTA 020" in delta_stage:
-                        xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
-                        table_name = extract_table_name(ddl_input) or "MASTER"
-                        st.session_state.wf_download_name = f"DELTA_020_{table_name}_CLN.XML"
-
-                    else:
-                        xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
-                        detail_table_name = extract_table_name(ddl_detail_input or "") or "DETAIL"
-                        st.session_state.wf_download_name = f"DELTA_030_{detail_table_name}_CLN.XML"
-
-                    st.session_state.xml_content = xml_content
-                    st.success("XML נוצר בהצלחה")
-                except Exception as e:
-                    st.error(f"שגיאה: {str(e)}")
-
-if "xml_content" in st.session_state and st.session_state.xml_content:
     st.markdown("---")
-    is_ddl = st.session_state.get("is_ddl_output", False)
 
-    if is_ddl:
-        st.markdown("### סקריפט DDL שנוצר")
-        with st.expander("הצג DDL", expanded=True):
-            st.code(st.session_state.xml_content, language="sql")
-
-        st.download_button(
-            label="הורד SQL",
-            data=st.session_state.xml_content,
-            file_name="delta_tables.sql",
-            mime="text/plain",
-            use_container_width=True,
-            type="primary"
-        )
+    if delta_stage == "WF PARAMETERS":
+        btn_label = "ייצר WF PARAMETERS XML"
+    elif delta_stage == "WF DELTA":
+        btn_label = "ייצר WF DELTA XML"
+    elif delta_stage == "GENERATE DDL DELTA TABLES":
+        btn_label = "ייצר DDL"
     else:
-        st.markdown("### XML שנוצר")
-        with st.expander("הצג XML", expanded=False):
-            st.code(st.session_state.xml_content, language="xml")
+        btn_label = "ייצר XML"
 
-        download_name = st.session_state.get("wf_download_name", "informatica_output.xml")
-        st.download_button(
-            label="הורד XML",
-            data=st.session_state.xml_content,
-            file_name=download_name,
-            mime="application/xml",
-            use_container_width=True,
-            type="primary"
-        )
+    if st.button(btn_label, use_container_width=True, type="primary"):
+        if delta_stage == "WF PARAMETERS":
+            if not wf_topic:
+                st.error("אנא הזן נושא עסקי לשם ה-WF")
+            elif not wf_file_name:
+                st.error("אנא הזן שם קובץ פרמטרים")
+            elif not wf_param_code:
+                st.error("אנא הזן קוד פרמטר")
+            else:
+                with st.spinner("מעבד..."):
+                    try:
+                        xml_content = generate_wf_parameters(
+                            topic=wf_topic,
+                            file_name=wf_file_name,
+                            param_code=wf_param_code,
+                            folder_name=folder_name
+                        )
+                        st.session_state.xml_content = xml_content
+                        st.session_state.is_ddl_output = False
+                        st.session_state.wf_download_name = f"WF_PARAMETERS_{wf_topic}.XML"
+                        st.success(f"XML נוצר בהצלחה: WF_PARAMETERS_{wf_topic}.XML")
+                    except Exception as e:
+                        st.error(f"שגיאה: {str(e)}")
+
+        elif delta_stage == "WF DELTA":
+            if not wf_delta_topic:
+                st.error("אנא הזן נושא עסקי לשם ה-WF")
+            elif not wf_delta_file_name:
+                st.error("אנא הזן שם קובץ פרמטרים")
+            else:
+                with st.spinner("מעבד..."):
+                    try:
+                        xml_content = generate_wf_delta(
+                            topic=wf_delta_topic,
+                            file_name=wf_delta_file_name,
+                            folder_name=wf_delta_folder
+                        )
+                        st.session_state.xml_content = xml_content
+                        st.session_state.is_ddl_output = False
+                        st.session_state.wf_download_name = f"WF_DELTA_{wf_delta_topic}.XML"
+                        st.success(f"XML נוצר בהצלחה: WF_DELTA_{wf_delta_topic}.XML")
+                    except Exception as e:
+                        st.error(f"שגיאה: {str(e)}")
+
+        elif delta_stage == "GENERATE DDL DELTA TABLES":
+            if not ddl_input.strip():
+                st.error("אנא הדבק DDL")
+            else:
+                with st.spinner("מעבד..."):
+                    try:
+                        result_content = generate_ddl_delta_tables(ddl_input)
+                        st.session_state.xml_content = result_content
+                        st.session_state.is_ddl_output = True
+                        st.session_state.wf_download_name = "delta_tables.sql"
+                        st.success("סקריפט DDL נוצר בהצלחה")
+                    except Exception as e:
+                        st.error(f"שגיאה: {str(e)}")
+
+        else:
+            if not ddl_input.strip():
+                st.error("אנא הדבק DDL")
+            elif "DELTA 030" in delta_stage and (
+                not ddl_master_input or not ddl_master_input.strip() or
+                not ddl_detail_input or not ddl_detail_input.strip()
+            ):
+                st.error("אנא הדבק שתי טבלאות: MASTER ו-DETAIL")
+            else:
+                with st.spinner("מעבד..."):
+                    try:
+                        st.session_state.is_ddl_output = False
+
+                        if "DELTA 000" in delta_stage:
+                            xml_content = generate_delta_000(ddl_input, folder_name=folder_name)
+                            table_name = extract_table_name(ddl_input) or "MASTER"
+                            st.session_state.wf_download_name = f"DELTA_000_{table_name}_KEY_STG.XML"
+
+                        elif "DELTA 010" in delta_stage:
+                            xml_content = generate_delta_010(ddl_input, folder_name=folder_name)
+                            table_name = extract_table_name(ddl_input) or "MASTER"
+                            st.session_state.wf_download_name = f"DELTA_010_{table_name}_STG.XML"
+
+                        elif "DELTA 020" in delta_stage:
+                            xml_content = generate_delta_020(ddl_input, folder_name=folder_name)
+                            table_name = extract_table_name(ddl_input) or "MASTER"
+                            st.session_state.wf_download_name = f"DELTA_020_{table_name}_CLN.XML"
+
+                        else:
+                            xml_content = generate_delta_030(ddl_input, folder_name=folder_name)
+                            detail_table_name = extract_table_name(ddl_detail_input or "") or "DETAIL"
+                            st.session_state.wf_download_name = f"DELTA_030_{detail_table_name}_CLN.XML"
+
+                        st.session_state.xml_content = xml_content
+                        st.success("XML נוצר בהצלחה")
+                    except Exception as e:
+                        st.error(f"שגיאה: {str(e)}")
+
+    if "xml_content" in st.session_state and st.session_state.xml_content:
+        st.markdown("---")
+        is_ddl = st.session_state.get("is_ddl_output", False)
+
+        if is_ddl:
+            st.markdown("### סקריפט DDL שנוצר")
+            with st.expander("הצג DDL", expanded=True):
+                st.code(st.session_state.xml_content, language="sql")
+
+            st.download_button(
+                label="הורד SQL",
+                data=st.session_state.xml_content,
+                file_name="delta_tables.sql",
+                mime="text/plain",
+                use_container_width=True,
+                type="primary"
+            )
+        else:
+            st.markdown("### XML שנוצר")
+            with st.expander("הצג XML", expanded=False):
+                st.code(st.session_state.xml_content, language="xml")
+
+            download_name = st.session_state.get("wf_download_name", "informatica_output.xml")
+            st.download_button(
+                label="הורד XML",
+                data=st.session_state.xml_content,
+                file_name=download_name,
+                mime="application/xml",
+                use_container_width=True,
+                type="primary"
+            )
+
+
 if __name__ == "__main__":
-     main()
+    main()
